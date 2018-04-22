@@ -1,0 +1,9 @@
+[target.rlk-x64]
+runner = "./run.sh"
+rustflags = [
+    "-C", "link-arg=-uMBHEADER",
+    "-C", "link-arg=-e_start",
+]
+
+[build]
+target = "rlk-x64"
