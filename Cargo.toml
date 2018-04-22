@@ -1,0 +1,6 @@
+[package]
+name = "r42"
+version = "0.1.0"
+authors = ["Adrian Danis <rambobones@gmail.com>"]
+
+[dependencies]
