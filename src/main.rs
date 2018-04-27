@@ -9,6 +9,9 @@ extern crate rlibc;
 //extern crate compiler_builtins;
 
 mod boot;
+mod panic;
+
+pub use panic::*;
 
 static HELLO: &[u8] = b"Hello World!";
 
@@ -23,14 +26,5 @@ pub extern "C" fn boot_system() -> ! {
         }
     }
 
-    loop {}
-}
-
-#[lang = "panic_fmt"]
-#[no_mangle]
-pub extern fn rust_begin_panic(_msg: core::fmt::Arguments,
-                               _file: &'static str,
-                               _line: u32,
-                               _column: u32) -> ! {
     loop {}
 }
