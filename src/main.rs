@@ -6,7 +6,7 @@
 #![no_main]
 
 extern crate rlibc;
-extern crate compiler_builtins;
+//extern crate compiler_builtins;
 
 #[repr(C,packed)]
 struct MultibootHeader {
