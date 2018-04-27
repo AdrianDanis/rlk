@@ -10,6 +10,7 @@ extern crate rlibc;
 
 mod boot;
 mod panic;
+mod con;
 
 pub use panic::*;
 
