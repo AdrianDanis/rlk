@@ -1,8 +1,11 @@
 [target.rlk-x64]
 runner = "./run.sh"
+# Use a custom linker just so that we can be able to find our linker script
+# as otherwise we have an unknown working directory
+linker = "./link.sh"
 rustflags = [
-    "-C", "link-arg=-uMBHEADER",
-    "-C", "link-arg=-e_start",
+    "-C", "link-arg=-z", "-C", "link-arg=max-page-size=0x1000",
+    "-C", "link-arg=-T", "-C", "link-arg=rlk.ld",
 ]
 
 [build]

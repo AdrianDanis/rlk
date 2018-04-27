@@ -41,10 +41,9 @@ struct MultibootAlign {
     mb2: Multiboot2Header,
 }
 
-#[link_section=".rodata"]
+#[link_section=".multiboot"]
 #[used]
 #[linkage="external"]
-#[export_name="MBHEADER"]
 static MBHEADER: MultibootAlign = MultibootAlign{
     mb1: MultibootHeader {
         magic: 0x1BADB002u32,
