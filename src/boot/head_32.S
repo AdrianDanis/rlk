@@ -18,8 +18,15 @@ check_1gb:
     ret
 
 construct_pml4:
-    /* Zero the PDPT */
-    movl $phys_pdpt, %edi
+    /* Zero the PDPTs */
+    movl $phys_pdpt_low, %edi
+    movl $0x0, %eax
+    movl $1024, %ecx
+1:
+    movl %eax, (%edi)
+    addl $4, %edi
+    loop 1b
+    movl $phys_pdpt_high, %edi
     movl $0x0, %eax
     movl $1024, %ecx
 1:
@@ -35,9 +42,10 @@ construct_pml4:
     loop 1b
     /* Point the first 4 entires in the PDPT to the first 4gb of memory,
      * With the first entry being duplicated in the second highest entry
-     * to become our kernel window */
-    movl $phys_pdpt, %edi
-    movl $0x87, %eax
+     * to become our kernel window. Our low entries are uncached and our
+     * high entry is cached */
+    movl $phys_pdpt_high, %edi
+    movl $0x83, %eax
     movl %eax, (%edi)
     movl %eax, 4080(%edi)
     addl $0x40000000, %eax
@@ -46,11 +54,23 @@ construct_pml4:
     movl %eax, 16(%edi)
     addl $0x40000000, %eax
     movl %eax, 24(%edi)
-    /* Put the PDPT in the PML4 */
+    movl $phys_pdpt_low, %edi
+    movl $0x9B, %eax
+    movl %eax, (%edi)
+    movl %eax, 4080(%edi)
+    addl $0x40000000, %eax
+    movl %eax, 8(%edi)
+    addl $0x40000000, %eax
+    movl %eax, 16(%edi)
+    addl $0x40000000, %eax
+    movl %eax, 24(%edi)
+    /* Put the PDPTs in the PML4 */
     movl $phys_pml4, %edi
-    movl $phys_pdpt, %eax
+    movl $phys_pdpt_low, %eax
     orl $0x7, %eax
     movl %eax, (%edi)
+    movl $phys_pdpt_high, %eax
+    orl $0x7, %eax
     movl %eax, 4088(%edi)
     ret
 
@@ -161,5 +181,7 @@ phys_stack_top:
 .align 4096
 phys_pml4:
     .fill 4096
-phys_pdpt:
+phys_pdpt_low:
+    .fill 4096
+phys_pdpt_high:
     .fill 4096
