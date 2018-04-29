@@ -14,18 +14,9 @@ mod con;
 
 pub use panic::*;
 
-static HELLO: &[u8] = b"Hello World!";
-
 #[no_mangle]
 pub extern "C" fn boot_system() -> ! {
-    let vga_buffer = 0xb8000 as *const u8 as *mut u8;
-
-    for (i, &byte) in HELLO.iter().enumerate() {
-        unsafe {
-            *vga_buffer.offset(i as isize * 2) = byte;
-            *vga_buffer.offset(i as isize * 2 + 1) = 0xb;
-        }
-    }
-
+    con::early_init("vga_80_25");
+    con::print(con::V::Info, "Hello world");
     loop {}
 }
