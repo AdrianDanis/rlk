@@ -16,7 +16,7 @@
 // 3. Attempt default init of early consoles
 
 use core::result::Result;
-use core::fmt;
+use core::{fmt,ptr};
 
 // Verbosity level
 #[derive(Debug, Copy, Clone)]
@@ -68,8 +68,8 @@ impl TextFB {
     fn put_at_cursor(&mut self, c: u8, color: u8) {
         let off = self.cursor_y as isize * self.line_stride as isize + self.cursor_x as isize * self.char_stride as isize;
         unsafe {
-            *self.base.offset(off) = c;
-            *self.base.offset(off + 1) = color;
+            ptr::write_volatile(self.base.offset(off), c);
+            ptr::write_volatile(self.base.offset(off + 1), color);
         }
         self.cursor_x = self.cursor_x + 1;
     }
