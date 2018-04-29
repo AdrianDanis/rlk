@@ -16,7 +16,7 @@
 // 3. Attempt default init of early consoles
 
 use core::result::Result;
-use core::{fmt,ptr};
+use core::{fmt, ptr, intrinsics};
 
 // Verbosity level
 #[derive(Debug, Copy, Clone)]
@@ -59,34 +59,66 @@ struct VGAText {
     height: u16,
     line_stride: u32,
     cursor_x: u16,
-    cursor_y: u16,
+    scroll_next: bool,
 }
 
+// TODO: define trait for text screens that defines common logic that can be shared to
+// framebuffer implementations that mimic text modes
 impl VGAText {
-    fn put_at_cursor(&mut self, c: u8, color: u8) {
-        let off = self.cursor_y as isize * self.line_stride as isize + self.cursor_x as isize * 2 as isize;
+    fn put_at(&mut self, x: u16, y: u16, c: u8, color: u8) {
+        let off = y as isize * self.line_stride as isize + x as isize * 2 as isize;
         unsafe {
             ptr::write_volatile(self.base.offset(off), c);
             ptr::write_volatile(self.base.offset(off + 1), color);
         }
-        self.cursor_x = self.cursor_x + 1;
+    }
+    fn put_at_cursor(&mut self, c: u8, color: u8) {
+        let x = self.cursor_x;
+        let y = self.height - 1;
+        self.put_at(x, y, c, color);
     }
     fn increment_cursor(&mut self)  {
+        self.cursor_x = self.cursor_x + 1;
+    }
+    fn reset(&mut self) {
+        for i in 0..self.height {
+            self.blank_line(i);
+        }
+        // TODO: use I/O ports to disable the cursor
+        //outb 0x3d4 0x0a
+        //outb 0x3d5 0x20
     }
     fn next_line(&mut self) {
         self.cursor_x = 0;
-        if self.cursor_y + 1 == self.height {
-            self.scroll();
-        } else {
-            self.cursor_y = self.cursor_y + 1;
+        self.scroll();
+    }
+    fn copy_line(&mut self, dest: u16, src: u16) {
+        unsafe{intrinsics::volatile_copy_nonoverlapping_memory(
+            self.base.offset(dest as isize * self.line_stride as isize),
+            self.base.offset(src as isize * self.line_stride as isize),
+            self.line_stride as usize
+        );}
+    }
+    fn blank_line(&mut self, line: u16) {
+        for i in 0..self.width {
+            self.put_at(i, line, ' ' as u8, 0xb);
         }
     }
     fn scroll(&mut self) {
+        let h = self.height;
+        for i in 0..h - 1 {
+            self.copy_line(i, i + 1);
+        }
+        self.blank_line(h - 1);
     }
 }
 
 impl Con for VGAText {
     fn print(&mut self, s: &str) -> () {
+        if self.scroll_next {
+            self.next_line();
+            self.scroll_next = false;
+        }
         for c in s.chars() {
             for e in c.escape_default() {
                 self.put_at_cursor(e as u8, 0xb);
@@ -97,7 +129,7 @@ impl Con for VGAText {
     fn prepare(&mut self, v: V) {
     }
     fn end(&mut self) {
-        self.next_line();
+        self.scroll_next = true;
     }
 }
 
@@ -115,11 +147,14 @@ static mut EARLY_VGA_80_25: VGAText = VGAText {
     height: 25,
     line_stride: 80 * 2,
     cursor_x: 0,
-    cursor_y: 0,
+    scroll_next: false,
 };
 
 fn init_vga_80_25(_args: &str) -> Result<&'static mut EarlyCon, ()> {
     // TODO: validate that the base is within the memory limit
+    unsafe {
+        EARLY_VGA_80_25.reset();
+    }
     Ok(unsafe{&mut EARLY_VGA_80_25})
 }
 
