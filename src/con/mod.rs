@@ -32,8 +32,9 @@ pub enum V {
 
 
 trait Con {
-    fn print(&mut self, character: u8);
+    fn print(&mut self, s: &str);
     fn prepare(&mut self, v: V);
+    fn end(&mut self);
 }
 
 trait EarlyCon: Con {
@@ -63,16 +64,42 @@ struct TextFB {
     // TODO: define color modes
 }
 
-impl Con for TextFB {
-    fn print(&mut self, character: u8) -> () {
+impl TextFB {
+    fn put_at_cursor(&mut self, c: u8, color: u8) {
         let off = self.cursor_y as isize * self.line_stride as isize + self.cursor_x as isize * self.char_stride as isize;
         unsafe {
-            *self.base.offset(off) = character;
-            *self.base.offset(off + 1) = 0xb;
+            *self.base.offset(off) = c;
+            *self.base.offset(off + 1) = color;
         }
         self.cursor_x = self.cursor_x + 1;
     }
+    fn increment_cursor(&mut self)  {
+    }
+    fn next_line(&mut self) {
+        self.cursor_x = 0;
+        if self.cursor_y + 1 == self.height {
+            self.scroll();
+        } else {
+            self.cursor_y = self.cursor_y + 1;
+        }
+    }
+    fn scroll(&mut self) {
+    }
+}
+
+impl Con for TextFB {
+    fn print(&mut self, s: &str) -> () {
+        for c in s.chars() {
+            for e in c.escape_default() {
+                self.put_at_cursor(e as u8, 0xb);
+                self.increment_cursor();
+            }
+        }
+    }
     fn prepare(&mut self, v: V) {
+    }
+    fn end(&mut self) {
+        self.next_line();
     }
 }
 
@@ -113,9 +140,7 @@ static mut CON_STATE: State = State {early: None, verbosity: V::Debug};
 
 impl fmt::Write for EarlyCon {
     fn write_str(&mut self, s: &str) -> fmt::Result {
-        for c in s.chars() {
-            self.print(c as u8);
-        }
+        self.print(s);
         Ok(())
     }
 }
@@ -171,6 +196,7 @@ impl State {
                 Some(ref mut con) => {
                     con.prepare(verbosity);
                     fmt::Write::write_fmt(con, args);
+                    con.end();
                     },
                 None => (),
             }
@@ -208,11 +234,4 @@ pub fn print_fmt(verbosity: V, args: fmt::Arguments) -> fmt::Result {
 #[macro_export]
 macro_rules! print {
     ($v:ident, $($arg:tt)*) => ($crate::con::print_fmt($crate::con::V::$v, format_args!($($arg)*)).unwrap());
-}
-
-#[macro_export]
-macro_rules! println {
-    () => (print!("\n"));
-    ($fmt:expr) => (print!(concat!($fmt, "\n")));
-    ($fmt:expr, $($arg:tt)*) => (print!(concat!($fmt, "\n"), $($arg)*));
 }

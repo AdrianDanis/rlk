@@ -19,5 +19,6 @@ pub use panic::*;
 pub extern "C" fn boot_system() -> ! {
     con::early_init("vga_80_25");
     print!(Info, "Hello world");
+    print!(Info, "Goodbye");
     loop {}
 }
