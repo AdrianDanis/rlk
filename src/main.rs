@@ -10,6 +10,7 @@ extern crate rlibc;
 
 mod boot;
 mod panic;
+#[macro_use]
 mod con;
 
 pub use panic::*;
@@ -17,6 +18,6 @@ pub use panic::*;
 #[no_mangle]
 pub extern "C" fn boot_system() -> ! {
     con::early_init("vga_80_25");
-    con::print(con::V::Info, "Hello world");
+    print!(Info, "Hello world");
     loop {}
 }

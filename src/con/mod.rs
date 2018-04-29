@@ -16,8 +16,10 @@
 // 3. Attempt default init of early consoles
 
 use core::result::Result;
+use core::fmt;
 
 // Verbosity level
+#[derive(Debug, Copy, Clone)]
 pub enum V {
     Panic,
     Error,
@@ -31,6 +33,7 @@ pub enum V {
 
 trait Con {
     fn print(&mut self, character: u8);
+    fn prepare(&mut self, v: V);
 }
 
 trait EarlyCon: Con {
@@ -69,6 +72,8 @@ impl Con for TextFB {
         }
         self.cursor_x = self.cursor_x + 1;
     }
+    fn prepare(&mut self, v: V) {
+    }
 }
 
 impl EarlyCon for TextFB {
@@ -98,53 +103,116 @@ static EARLY_CONS: [EarlyConEntry; 1] = [
     EarlyConEntry {name: "vga_80_25", init: init_vga_80_25},
 ];
 
-// Only support one early con at a time
-static mut EARLY_CON: Option<&'static mut EarlyCon> = None;
+pub struct State {
+    // Only support one early con at a time
+    early: Option<&'static mut EarlyCon>,
+    verbosity: V,
+}
 
-// Early console initialize always succeeds as there will be no way to inform the user if it
-// went wrong so we might as well just keep going and hope we can get a real console eventually
-// and let them know
-// Format of the --earlycon= parameter is: CON_NAME,ARG1=foo,ARG2=bar
-// For example --earlycon=serial,port=3f8
-pub fn early_init(early: &str) {
-    if unsafe{EARLY_CON.is_some()} {
-        //TODO: print an error for later
+static mut CON_STATE: State = State {early: None, verbosity: V::Debug};
+
+impl fmt::Write for EarlyCon {
+    fn write_str(&mut self, s: &str) -> fmt::Result {
+        for c in s.chars() {
+            self.print(c as u8);
+        }
+        Ok(())
     }
-    let mut iter = early.splitn(2, ",");
-    // expect at least one element
-    let (name, rest) = match iter.next() {
-        Some(n) =>
-            match iter.next() {
-                Some(r) => (n, r),
-                None => (n, ""),
+}
+
+impl State {
+    // Early console initialize always succeeds as there will be no way to inform the user if it
+    // went wrong so we might as well just keep going and hope we can get a real console eventually
+    // and let them know
+    // Format of the --earlycon= parameter is: CON_NAME,ARG1=foo,ARG2=bar
+    // For example --earlycon=serial,port=3f8
+    pub fn early_init(&mut self, early: &str) {
+        if unsafe{self.early.is_some()} {
+            //TODO: print an error for later
+        }
+        let mut iter = early.splitn(2, ",");
+        // expect at least one element
+        let (name, rest) = match iter.next() {
+            Some(n) =>
+                match iter.next() {
+                    Some(r) => (n, r),
+                    None => (n, ""),
+                },
+            None => {
+                // TODO: print error
+                return;
             },
-        None => {
-            // TODO: print error
-            return;
-        },
-    };
-    for con in EARLY_CONS.iter() {
-        if con.name == name {
-            match (con.init)(rest) {
-                Ok(con) =>
-                    unsafe{EARLY_CON = Some(con)},
-                Err(()) =>
-                    //TODO: print out an error
-                    return,
-            };
+        };
+        for con in EARLY_CONS.iter() {
+            if con.name == name {
+                match (con.init)(rest) {
+                    Ok(con) =>
+                        self.early = Some(con),
+                    Err(()) =>
+                        //TODO: print out an error
+                        return,
+                };
+            }
+        }
+    }
+
+    pub fn set_verbosity(&mut self, verbosity: V) {
+         self.verbosity = verbosity
+    }
+
+    fn log_allowed(&self, _v: V) -> bool {
+        true
+    }
+
+    fn print_line(&mut self, verbosity: V, args: fmt::Arguments) {
+        // Currently only assume the early con
+        unsafe {
+            match self.early {
+                Some(ref mut con) => {
+                    con.prepare(verbosity);
+                    fmt::Write::write_fmt(con, args);
+                    },
+                None => (),
+            }
+        }
+    }
+
+    pub fn print(&mut self, verbosity: V, args: fmt::Arguments) {
+        // TODO utf8 handling
+        if self.log_allowed(verbosity) {
+            // Generate actual message and print it
+            let seconds = 0 as u64;
+            let micros = 0 as u32;
+            self.print_line(verbosity, format_args!("[{:0>5}.{:0>5}] {}", seconds, micros, args));
         }
     }
 }
 
+unsafe fn get() -> &'static mut State {
+    &mut CON_STATE
+}
+
+pub fn early_init(early: &str) {
+    unsafe{get().early_init(early);}
+}
+
 pub fn print(verbosity: V, message: &str) {
-    // TODO utf8 handling
-    unsafe {
-        match EARLY_CON {
-            Some(ref mut con) =>
-                for c in message.chars() {
-                    con.print(c as u8);
-                },
-            None => (),
-        }
-    }
+    print_fmt(verbosity, format_args!("{}", message));
+}
+
+pub fn print_fmt(verbosity: V, args: fmt::Arguments) -> fmt::Result {
+    unsafe{get().print(verbosity, args);};
+    Ok(())
+}
+
+#[macro_export]
+macro_rules! print {
+    ($v:ident, $($arg:tt)*) => ($crate::con::print_fmt($crate::con::V::$v, format_args!($($arg)*)).unwrap());
+}
+
+#[macro_export]
+macro_rules! println {
+    () => (print!("\n"));
+    ($fmt:expr) => (print!(concat!($fmt, "\n")));
+    ($fmt:expr, $($arg:tt)*) => (print!(concat!($fmt, "\n"), $($arg)*));
 }
