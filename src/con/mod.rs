@@ -60,6 +60,49 @@ struct VGAText {
     line_stride: u32,
     cursor_x: u16,
     scroll_next: bool,
+    active_color: u8,
+    panic_color: u8,
+    error_color: u8,
+    info_color: u8,
+    debug_color: u8,
+    trace_color: u8,
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(u8)]
+enum BackgroundColor {
+    Black = 0,
+    Blue = 1,
+    Green = 2,
+    Cyan = 3,
+    Red = 4,
+    Magenta = 5,
+    Brown = 6,
+}
+
+#[derive(Debug, Clone, Copy)]
+#[repr(u8)]
+enum ForegroundColor {
+    Black = 0,
+    Blue = 1,
+    Green = 2,
+    Cyan = 3,
+    Red = 4,
+    Magenta = 5,
+    Brown = 6,
+    LightGray = 7,
+    DarkGray = 8,
+    LightBlue = 9,
+    LightGreen = 10,
+    LightCyan = 11,
+    LightRed = 12,
+    Pink = 13,
+    Yellow = 14,
+    White = 15,
+}
+
+const fn make_color(fore: ForegroundColor, back: BackgroundColor) -> u8 {
+    ((back as u8) << 4) | (fore as u8)
 }
 
 // TODO: define trait for text screens that defines common logic that can be shared to
@@ -119,14 +162,22 @@ impl Con for VGAText {
             self.next_line();
             self.scroll_next = false;
         }
+        let color = self.active_color;
         for c in s.chars() {
             for e in c.escape_default() {
-                self.put_at_cursor(e as u8, 0xb);
+                self.put_at_cursor(e as u8, color);
                 self.increment_cursor();
             }
         }
     }
     fn prepare(&mut self, v: V) {
+        self.active_color = match v {
+            V::Panic => self.panic_color,
+            V::Error => self.error_color,
+            V::Info => self.info_color,
+            V::Debug => self.debug_color,
+            V::Trace => self.trace_color,
+        }
     }
     fn end(&mut self) {
         self.scroll_next = true;
@@ -148,6 +199,13 @@ static mut EARLY_VGA_80_25: VGAText = VGAText {
     line_stride: 80 * 2,
     cursor_x: 0,
     scroll_next: false,
+    active_color: 0,
+    // TODO: Should probably make default colors for this?
+    panic_color: make_color(ForegroundColor::LightRed, BackgroundColor::Black),
+    error_color: make_color(ForegroundColor::Yellow, BackgroundColor::Black),
+    info_color: make_color(ForegroundColor::White, BackgroundColor::Black),
+    debug_color: make_color(ForegroundColor::Green, BackgroundColor::Black),
+    trace_color: make_color(ForegroundColor::LightBlue, BackgroundColor::Black),
 };
 
 fn init_vga_80_25(_args: &str) -> Result<&'static mut EarlyCon, ()> {

@@ -3,6 +3,7 @@
 #![feature(used)]
 #![feature(linkage)]
 #![feature(core_intrinsics)]
+#![feature(const_fn)]
 #![no_std]
 #![no_main]
 
@@ -19,7 +20,10 @@ pub use panic::*;
 #[no_mangle]
 pub extern "C" fn boot_system() -> ! {
     con::early_init("vga_80_25");
-    print!(Info, "Hello world");
-    print!(Info, "Goodbye");
+    print!(Panic, "Panic");
+    print!(Error, "Error");
+    print!(Info, "Info");
+    print!(Debug, "Debug");
+    print!(Trace, "Trace");
     loop {}
 }
