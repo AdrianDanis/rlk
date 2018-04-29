@@ -53,20 +53,18 @@ struct EarlyConEntry {
     init: fn(args: &str) -> Result<&'static mut EarlyCon,()>,
 }
 
-struct TextFB {
+struct VGAText {
     base: *mut u8,
     width: u16,
     height: u16,
     line_stride: u32,
-    char_stride: u32,
     cursor_x: u16,
     cursor_y: u16,
-    // TODO: define color modes
 }
 
-impl TextFB {
+impl VGAText {
     fn put_at_cursor(&mut self, c: u8, color: u8) {
-        let off = self.cursor_y as isize * self.line_stride as isize + self.cursor_x as isize * self.char_stride as isize;
+        let off = self.cursor_y as isize * self.line_stride as isize + self.cursor_x as isize * 2 as isize;
         unsafe {
             ptr::write_volatile(self.base.offset(off), c);
             ptr::write_volatile(self.base.offset(off + 1), color);
@@ -87,7 +85,7 @@ impl TextFB {
     }
 }
 
-impl Con for TextFB {
+impl Con for VGAText {
     fn print(&mut self, s: &str) -> () {
         for c in s.chars() {
             for e in c.escape_default() {
@@ -103,7 +101,7 @@ impl Con for TextFB {
     }
 }
 
-impl EarlyCon for TextFB {
+impl EarlyCon for VGAText {
     fn shutdown(&mut self) -> () {
     }
     fn become_virtual(&mut self) -> Result<(), ()> {
@@ -111,12 +109,11 @@ impl EarlyCon for TextFB {
     }
 }
 
-static mut EARLY_VGA_80_25: TextFB = TextFB {
+static mut EARLY_VGA_80_25: VGAText = VGAText {
     base: 0xb8000 as *mut u8,
     width: 80,
     height: 25,
     line_stride: 80 * 2,
-    char_stride: 2,
     cursor_x: 0,
     cursor_y: 0,
 };
