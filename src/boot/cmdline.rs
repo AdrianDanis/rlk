@@ -25,4 +25,7 @@ pub fn process() {
                 .filter(|x| x.option == option)
                 .for_each(|x| (x.f)(value))
         );
+    // There was no point printing out the cmdline before this, now that we've processed it, print it out
+    // so that any earlycon's that might have just been initialized will display it
+    print!(Info, "Successfully processed initial kernel cmdline: {}", cmd);
 }
