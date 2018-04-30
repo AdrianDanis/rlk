@@ -17,6 +17,7 @@
 
 use core::result::Result;
 use core::{fmt, ptr, intrinsics};
+use util;
 
 // Verbosity level
 #[derive(Debug, Copy, Clone)]
@@ -239,32 +240,14 @@ impl State {
     // Early console initialize always succeeds as there will be no way to inform the user if it
     // went wrong so we might as well just keep going and hope we can get a real console eventually
     // and let them know
-    // Format of the --earlycon= parameter is: CON_NAME,ARG1=foo,ARG2=bar
-    // For example --earlycon=serial,port=3f8
     pub fn early_init(&mut self, early: &str) {
-        if unsafe{self.early.is_some()} {
-            //TODO: print an error for later
-        }
-        let mut iter = early.splitn(2, ",");
-        // expect at least one element
-        let (name, rest) = match iter.next() {
-            Some(n) =>
-                match iter.next() {
-                    Some(r) => (n, r),
-                    None => (n, ""),
-                },
-            None => {
-                // TODO: print error
-                return;
-            },
-        };
+        let (name, rest) = util::split_first_str(early, ",");
         for con in EARLY_CONS.iter() {
             if con.name == name {
                 match (con.init)(rest) {
                     Ok(con) =>
                         self.early = Some(con),
                     Err(()) =>
-                        //TODO: print out an error
                         return,
                 };
             }
@@ -326,4 +309,6 @@ macro_rules! print {
     ($v:ident, $($arg:tt)*) => ($crate::con::print_fmt($crate::con::V::$v, format_args!($($arg)*)).unwrap());
 }
 
+/// Format of the --earlycon= parameter is: CON_NAME,ARG1=foo,ARG2=bar
+/// For example --earlycon=serial,port=3f8
 make_cmdline_decl!("earlycon", early_init, EARLYCON);

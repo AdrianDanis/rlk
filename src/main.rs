@@ -5,6 +5,7 @@
 #![feature(core_intrinsics)]
 #![feature(const_fn)]
 #![feature(ptr_offset_from)]
+#![feature(pattern)]
 #![no_std]
 #![no_main]
 #![feature(plugin)]
@@ -20,6 +21,7 @@ mod con;
 
 mod boot;
 mod panic;
+mod util;
 
 pub use panic::*;
 
