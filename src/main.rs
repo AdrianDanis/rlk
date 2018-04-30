@@ -33,15 +33,7 @@ pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
     } else {
         panic!("Unknown boot style");
     }
-    let cmdline = "--earlycon=vga_80_25";
-    cmdline.split_whitespace()
-        .map(|x| util::split_first_str(x,"="))
-        .filter_map(|(option, value)| if option.starts_with("--") { Some((&option[2..], value))} else { None })
-        .for_each(|(option, value)|
-            decls_iter!(CMDLine)
-                .filter(|x| x.option == option)
-                .for_each(|x| (x.f)(value))
-        );
+    boot::cmdline::process();
     print!(Panic, "Panic");
     print!(Error, "Error");
     print!(Info, "Info");

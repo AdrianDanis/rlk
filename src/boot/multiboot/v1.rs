@@ -1,4 +1,7 @@
-use multiboot;
+use multiboot::*;
+use boot;
+
+use core::{mem, slice};
 
 const MAGIC: u32 = 0x1BADB002;
 
@@ -66,6 +69,20 @@ impl Header {
     }
 }
 
+// TODO: make this common and check that the region is valid for whatever the current kernel window is
+fn paddr_to_slice<'a>(p: PAddr, sz: usize) -> Option<&'a [u8]> {
+    unsafe {
+        let ptr = mem::transmute(p);
+        Some(slice::from_raw_parts(ptr, sz))
+    }
+}
+
 pub fn init(mb: usize) {
-    
+    let mb = unsafe{Multiboot::new(mb as PAddr, paddr_to_slice)}.unwrap();
+    match mb.command_line() {
+        // TODO: should be initializing basic paddr allocators etc before this but for now
+        // we are just reating the command line as a 'static str
+        Some(x) => boot::cmdline::set(unsafe{mem::transmute(x)}),
+        None => boot::cmdline::set(""),
+    }
 }
