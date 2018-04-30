@@ -168,9 +168,15 @@ impl Con for VGAText {
         }
         let color = self.active_color;
         for c in s.chars() {
-            for e in c.escape_default() {
-                self.put_at_cursor(e as u8, color);
+            // We want default escaping *except* for quotes as they are regular printable ascii characters
+            if c == '"' || c == '\'' {
+                self.put_at_cursor(c as u8, color);
                 self.increment_cursor();
+            } else {
+                for e in c.escape_default() {
+                    self.put_at_cursor(e as u8, color);
+                    self.increment_cursor();
+                }
             }
         }
     }
