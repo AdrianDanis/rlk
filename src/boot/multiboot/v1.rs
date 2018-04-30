@@ -19,11 +19,40 @@ pub struct Header {
 }
 
 impl Header {
-    pub const fn new() -> Self {
+    // Slightly awkward checksum generation to work around current limitations of rust `const fn`
+    const fn with_checksum(candidate: Self) -> Self {
         Self {
+            magic: candidate.magic,
+            flags: candidate.flags,
+            checksum: u32::max_value()
+                - candidate.magic
+                - candidate.flags
+                - candidate.header_addr
+                - candidate.load_addr
+                - candidate.load_end_addr
+                - candidate.bss_end_addr
+                - candidate.entry_addr
+                - candidate.mode_type
+                - candidate.width
+                - candidate.height
+                - candidate.depth
+                + 1,
+            header_addr: candidate.header_addr,
+            load_addr: candidate.load_addr,
+            load_end_addr: candidate.load_end_addr,
+            bss_end_addr: candidate.bss_end_addr,
+            entry_addr: candidate.entry_addr,
+            mode_type: candidate.mode_type,
+            width: candidate.width,
+            height: candidate.height,
+            depth: candidate.depth,
+        }
+    }
+    pub const fn new() -> Self {
+        Self::with_checksum( Self {
             magic: MAGIC,
             flags: 0,
-            checksum: 0xFFFFFFFFu32 - 0x1BADB002u32 + 1,
+            checksum: 0,
             header_addr: 0,
             load_addr: 0,
             load_end_addr: 0,
@@ -33,7 +62,7 @@ impl Header {
             width: 0,
             height: 0,
             depth: 0,
-        }
+        })
     }
 }
 
