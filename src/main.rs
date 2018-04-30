@@ -13,30 +13,25 @@
 extern crate rlibc;
 //extern crate compiler_builtins;
 
-mod boot;
-mod panic;
-    #[macro_use]
-mod con;
 #[macro_use]
 mod decls;
+#[macro_use]
+mod con;
+
+mod boot;
+mod panic;
 
 pub use panic::*;
 
-fn hello_world(_s: &str) {
-    print!(Info, "hello world");
-}
-
-make_cmdline_decl!("foo", hello_world, test);
-
 #[no_mangle]
 pub extern "C" fn boot_system() -> ! {
-    con::early_init("vga_80_25");
+    decls_iter!(CMDLine)
+        .filter(|x| x.option == "earlycon")
+        .for_each(|x| (x.f)("vga_80_25"));
     print!(Panic, "Panic");
     print!(Error, "Error");
     print!(Info, "Info");
     print!(Debug, "Debug");
     print!(Trace, "Trace");
-    decls_iter!(CMDLine)
-        .for_each(|x| (x.f)("hello"));
     loop {}
 }

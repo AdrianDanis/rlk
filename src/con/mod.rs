@@ -325,3 +325,5 @@ pub fn print_fmt(verbosity: V, args: fmt::Arguments) -> fmt::Result {
 macro_rules! print {
     ($v:ident, $($arg:tt)*) => ($crate::con::print_fmt($crate::con::V::$v, format_args!($($arg)*)).unwrap());
 }
+
+make_cmdline_decl!("earlycon", early_init, EARLYCON);
