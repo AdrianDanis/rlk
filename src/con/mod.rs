@@ -321,3 +321,11 @@ macro_rules! print {
 /// Format of the --earlycon= parameter is: CON_NAME,ARG1=foo,ARG2=bar
 /// For example --earlycon=serial,port=3f8
 make_cmdline_decl!("earlycon", early_init, EARLYCON);
+
+// TODO: add this as a test once we have a self test system
+fn self_test() -> bool {
+    print!(Debug, "unicode: 🍳  ");
+    print!(Debug, "newline \n are escaped");
+    print!(Debug, "Can put \" quotes \" in \'");
+    true
+}
