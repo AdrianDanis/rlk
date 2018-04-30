@@ -28,6 +28,13 @@ SECTIONS {
         *(.rodata*)
     }
 
+    .decls . : AT(ADDR(.decls) - KERNEL_OFFSET) {
+        . = ALIGN(64);
+        decls_section_begin = .;
+        KEEP(*(.test*))
+        decls_section_end = .;
+    }
+
     .data . : AT(ADDR(.data) - KERNEL_OFFSET) {
         *(.data*)
     }
