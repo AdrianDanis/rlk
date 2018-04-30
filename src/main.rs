@@ -12,6 +12,7 @@
 #![plugin(interpolate_idents)]
 
 extern crate rlibc;
+extern crate multiboot;
 //extern crate compiler_builtins;
 
 #[macro_use]
@@ -26,7 +27,12 @@ mod util;
 pub use panic::*;
 
 #[no_mangle]
-pub extern "C" fn boot_system() -> ! {
+pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
+    if arg1 as u32 == multiboot::SIGNATURE_EAX {
+        boot::multiboot::v1::init(arg2);
+    } else {
+        panic!("Unknown boot style");
+    }
     let cmdline = "--earlycon=vga_80_25";
     cmdline.split_whitespace()
         .map(|x| util::split_first_str(x,"="))

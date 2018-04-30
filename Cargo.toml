@@ -12,6 +12,7 @@ cc = "1.0"
 [dependencies]
 rlibc = "1.0.0"
 interpolate_idents = "0.2.4"
+multiboot = "0.3.0"
 
 [profile.release]
 lto = true
