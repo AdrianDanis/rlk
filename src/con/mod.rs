@@ -123,6 +123,9 @@ impl VGAText {
     }
     fn increment_cursor(&mut self)  {
         self.cursor_x = self.cursor_x + 1;
+        if self.cursor_x == self.width {
+            self.next_line();
+        }
     }
     fn reset(&mut self) {
         for i in 0..self.height {
