@@ -7,6 +7,8 @@
 #![feature(ptr_offset_from)]
 #![no_std]
 #![no_main]
+#![feature(plugin)]
+#![plugin(interpolate_idents)]
 
 extern crate rlibc;
 //extern crate compiler_builtins;
@@ -24,16 +26,7 @@ fn hello_world(_s: &str) {
     print!(Info, "hello world");
 }
 
-static REAL_THING: decls::Type =
-    decls::Type::CMDLine(decls::CMDLine{option:"foo",f: hello_world});
-
-#[link_section=".decls"]
-#[used]
-#[linkage="external"]
-static THING: decls::RawDecl = decls::RawDecl {
-    nonce: 42,
-    decl: &REAL_THING,
-};
+make_cmdline_decl!("foo", hello_world, test);
 
 #[no_mangle]
 pub extern "C" fn boot_system() -> ! {
