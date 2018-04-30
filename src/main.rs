@@ -13,10 +13,10 @@ extern crate rlibc;
 
 mod boot;
 mod panic;
-#[macro_use]
+    #[macro_use]
 mod con;
 #[macro_use]
-mod link_decls;
+mod decls;
 
 pub use panic::*;
 
@@ -24,13 +24,13 @@ fn hello_world(_s: &str) {
     print!(Info, "hello world");
 }
 
-static REAL_THING: link_decls::Type =
-    link_decls::Type::CMDLine(link_decls::CMDLine{option:"foo",f: hello_world});
+static REAL_THING: decls::Type =
+    decls::Type::CMDLine(decls::CMDLine{option:"foo",f: hello_world});
 
 #[link_section=".decls"]
 #[used]
 #[linkage="external"]
-static THING: link_decls::RawDecl = link_decls::RawDecl {
+static THING: decls::RawDecl = decls::RawDecl {
     nonce: 42,
     decl: &REAL_THING,
 };

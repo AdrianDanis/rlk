@@ -43,5 +43,5 @@ pub fn iter() -> DeclIter<'static> {
 
 #[macro_export]
 macro_rules! decls_iter {
-    ($decltype:ident) => ($crate::link_decls::iter().filter_map(|x| if let $crate::link_decls::Type::$decltype(y) = x { Some(y) } else { None}))
+    ($decltype:ident) => ($crate::decls::iter().filter_map(|x| if let $crate::decls::Type::$decltype(y) = x { Some(y) } else { None}))
 }
