@@ -27,9 +27,15 @@ pub use panic::*;
 
 #[no_mangle]
 pub extern "C" fn boot_system() -> ! {
-    decls_iter!(CMDLine)
-        .filter(|x| x.option == "earlycon")
-        .for_each(|x| (x.f)("vga_80_25"));
+    let cmdline = "--earlycon=vga_80_25";
+    cmdline.split_whitespace()
+        .map(|x| util::split_first_str(x,"="))
+        .filter_map(|(option, value)| if option.starts_with("--") { Some((&option[2..], value))} else { None })
+        .for_each(|(option, value)|
+            decls_iter!(CMDLine)
+                .filter(|x| x.option == option)
+                .for_each(|x| (x.f)(value))
+        );
     print!(Panic, "Panic");
     print!(Error, "Error");
     print!(Info, "Info");
