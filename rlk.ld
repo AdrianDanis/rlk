@@ -31,7 +31,7 @@ SECTIONS {
     .decls . : AT(ADDR(.decls) - KERNEL_OFFSET) {
         . = ALIGN(64);
         decls_section_begin = .;
-        KEEP(*(.test*))
+        KEEP(*(.decls*))
         decls_section_end = .;
     }
 
