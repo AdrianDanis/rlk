@@ -6,6 +6,7 @@
 #![feature(const_fn)]
 #![feature(ptr_offset_from)]
 #![feature(pattern)]
+#![feature(associated_type_defaults)]
 #![no_std]
 #![no_main]
 #![feature(plugin)]
@@ -24,6 +25,7 @@ mod con;
 mod boot;
 mod panic;
 mod util;
+mod drivers;
 
 pub use panic::*;
 
