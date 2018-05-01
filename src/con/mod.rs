@@ -18,6 +18,7 @@
 use core::result::Result;
 use core::{fmt, ptr, intrinsics};
 use util;
+use x86::io;
 
 // Verbosity level
 #[derive(Debug, Copy, Clone)]
@@ -131,9 +132,11 @@ impl VGAText {
         for i in 0..self.height {
             self.blank_line(i);
         }
-        // TODO: use I/O ports to disable the cursor
-        //outb 0x3d4 0x0a
-        //outb 0x3d5 0x20
+        // Make the cursor go away
+        unsafe {
+            io::outb(0x3d4, 0x0a);
+            io::outb(0x3d5, 0x20);
+        }
     }
     fn next_line(&mut self) {
         self.cursor_x = 0;

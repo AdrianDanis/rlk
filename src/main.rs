@@ -13,6 +13,7 @@
 
 extern crate rlibc;
 extern crate multiboot;
+extern crate x86;
 //extern crate compiler_builtins;
 
 #[macro_use]
