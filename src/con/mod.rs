@@ -19,6 +19,9 @@ use core::result::Result;
 use core::{fmt, ptr, intrinsics};
 use util;
 use x86::io;
+use drivers;
+use drivers::Serial;
+use drivers::uart16550::Uart;
 
 // Verbosity level
 #[derive(Debug, Copy, Clone)]
@@ -171,6 +174,7 @@ impl Con for VGAText {
         }
         let color = self.active_color;
         for c in s.chars() {
+            // TODO: this is duplicated
             // We want default escaping *except* for quotes as they are regular printable ascii characters
             if c == '"' || c == '\'' {
                 self.put_at_cursor(c as u8, color);
@@ -229,8 +233,70 @@ fn init_vga_80_25(_args: &str) -> Result<&'static mut EarlyCon, ()> {
     Ok(unsafe{&mut EARLY_VGA_80_25})
 }
 
-static EARLY_CONS: [EarlyConEntry; 1] = [
+struct ConSerial {
+    uart: Option<drivers::uart16550::Uart<drivers::io::PortIO<u8>>>,
+}
+
+static mut EARLY_SERIAL: ConSerial = ConSerial { uart: None };
+
+impl Con for ConSerial {
+    fn print(&mut self, s: &str) -> () {
+        unsafe {
+            match self.uart {
+                Some(ref mut uart) =>
+                    for c in s.chars() {
+                        // TODO: this is duplicated
+                        // We want default escaping *except* for quotes as they are regular printable ascii characters
+                        if c == '"' || c == '\'' {
+                            uart.write_byte(c as u8);
+                        } else {
+                            for e in c.escape_default() {
+                                uart.write_byte(c as u8);
+                            }
+                        }
+                    },
+                None => (),
+            }
+        }
+    }
+    fn prepare(&mut self, v: V) {
+        //unimplemented!()
+    }
+    fn end(&mut self) {
+        //unimplemented!()
+        unsafe {
+            match self.uart {
+                Some(ref mut uart) => {
+                        uart.write_byte(b'\r');
+                        uart.write_byte(b'\n');
+                    },
+                None => (),
+            }
+        }
+    }
+}
+
+impl EarlyCon for ConSerial {
+    fn shutdown(&mut self) -> () {
+        unimplemented!()
+    }
+    fn become_virtual(&mut self) -> Result<(), ()> {
+        unimplemented!()
+    }
+}
+
+impl ConSerial {
+    fn early_init(args: &str) ->Result<&'static mut EarlyCon, ()> {
+        unsafe {
+            EARLY_SERIAL.uart = Some(drivers::uart16550::Uart::new(drivers::io::PortIO::new(0x3f8)));
+        }
+        Ok(unsafe{&mut EARLY_SERIAL})
+    }
+}
+
+static EARLY_CONS: [EarlyConEntry; 2] = [
     EarlyConEntry {name: "vga_80_25", init: init_vga_80_25},
+    EarlyConEntry {name: "serial", init: ConSerial::early_init},
 ];
 
 pub struct State {

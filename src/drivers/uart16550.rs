@@ -216,7 +216,7 @@ impl<T, R> Uart<T> where T: Io<Item = u8, Range=R>, R: From<u8> {
         let latch = (115200 / baud) as u16;
         self.write_latch(latch);
     }
-    unsafe fn init(&mut self) {
+    pub unsafe fn init(&mut self) {
         // Minimal attempt to create sane state by disabling interrupts, the fifo and
         // ensuring the dlab is in its default (off) position
         self.set_dlab(false);
