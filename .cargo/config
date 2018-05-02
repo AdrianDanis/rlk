@@ -6,6 +6,7 @@ linker = "./link.sh"
 rustflags = [
     "-C", "link-arg=-z", "-C", "link-arg=max-page-size=0x1000",
     "-C", "link-arg=-T", "-C", "link-arg=rlk.ld",
+    "-Z", "external-macro-backtrace",
 ]
 
 [build]
