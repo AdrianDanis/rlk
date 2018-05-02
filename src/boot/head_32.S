@@ -174,7 +174,7 @@ gdt64:
     .byte   0
     .byte   0
 
-.align 8
+.align 32
 phys_stack_bottom:
     .fill 16384
 phys_stack_top:

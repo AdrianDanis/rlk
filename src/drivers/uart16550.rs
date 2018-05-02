@@ -53,22 +53,24 @@ impl Into<u8> for Parity {
 
 bitfield!{
     pub struct LCR(u8);
-    no default BitRange;
+//    no default BitRange;
     dlab, set_dlab: 7,7;
     sbe, set_sbe: 6,6;
-    Parity, into Parity, parity, set_parity: 5, 3;
+    parity, set_parity: 5, 3;
     stops, set_stops: 2, 2;
-    WordLength, into WordLength, word_len, set_word_len: 0, 2;
+    word_len, set_word_len: 2, 0;
 }
 
-impl<T> BitRange<T> for LCR where T: Into<u8>, T: From<u8> {
-    fn bit_range(&self, msb: usize, lsb: usize) -> T {
-        T::from((self as &BitRange<u8>).bit_range(msb, lsb))
-    }
-    fn set_bit_range(&mut self, msb: usize, lsb: usize, value: T) {
-        (self as &mut BitRange<u8>).set_bit_range(msb, lsb, value.into())
-    }
-}
+//impl<T> BitRange<T> for LCR where T: Into<u8>, T: From<u8> {
+//    fn bit_range(&self, msb: usize, lsb: usize) -> T {
+//        T::from(0)
+//        T::from((self as &BitRange<u8>).bit_range(msb, lsb))
+//    }
+//    fn set_bit_range(&mut self, msb: usize, lsb: usize, value: T) {
+//        (self as &mut BitRange<u8>).set_bit_range(msb, lsb, value.into())
+//        (self as &mut BitRange<u8>).set_bit_range(msb, lsb, 0)
+//    }
+//}
 
 bitflags! {
     /// Interrupt Enable Register
@@ -199,12 +201,12 @@ impl<T, R> Uart<T> where T: Io<Item = u8, Range=R>, R: From<u8> {
     unsafe fn configure_line(&mut self, bits: WordLength, two_stops: bool, parity: Parity) {
         let mut lcr = self.read_lcr();
         lcr.set_stops(two_stops as u8);
-        lcr.set_word_len(bits);
-        lcr.set_parity(parity);
+        lcr.set_word_len(bits.into());
+        lcr.set_parity(parity.into());
     }
     unsafe fn write_latch(&mut self, latch: u16) {
         self.set_dlab(true);
-        let high = (latch >> 8) as u8;
+        let high = ((latch & 0xff00) >> 8) as u8;
         let low = (latch & 0xff) as u8;
         self.io.write(R::from(1), high);
         self.io.write(R::from(0), low);
@@ -228,7 +230,7 @@ impl<T, R> Uart<T> where T: Io<Item = u8, Range=R>, R: From<u8> {
         let mcr = self.read_mcr();
         self.write_mcr((mcr - MCR::ACE - MCR::LM) | MCR::AO2 | MCR::AO1 | MCR::RTS | MCR::DTS);
     }
-    unsafe fn new(io: T) -> Uart<T> {
+    pub unsafe fn new(io: T) -> Uart<T> {
         let mut sp = Uart { io: io };
         sp.init();
         sp

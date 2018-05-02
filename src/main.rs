@@ -33,6 +33,8 @@ mod drivers;
 
 pub use panic::*;
 
+use drivers::Serial;
+
 #[no_mangle]
 pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
     if arg1 as u32 == multiboot::SIGNATURE_EAX {
@@ -46,5 +48,9 @@ pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
     print!(Info, "Info");
     print!(Debug, "Debug");
     print!(Trace, "Trace");
+    unsafe {
+        let mut uart = drivers::uart16550::Uart::new(drivers::io::PortIO::new(0x3f8));
+        uart.write_byte(b'A');
+    }
     loop {}
 }

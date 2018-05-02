@@ -19,6 +19,12 @@ pub struct PortIO<T> {
     data: PhantomData<T>,
 }
 
+impl<T> PortIO<T> {
+    pub fn new(base: u16) -> PortIO<T> {
+        PortIO {base: base, data: PhantomData}
+    }
+}
+
 impl Io for PortIO<u8> {
     type Item = u8;
     type Range = u16;
