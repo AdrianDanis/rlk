@@ -13,6 +13,8 @@ cc = "1.0"
 rlibc = "1.0.0"
 interpolate_idents = "0.2.4"
 multiboot = "0.3.0"
+bitflags = "1.0.3"
+bitfield = "0.12.2"
 
 [dependencies.x86]
 version = "0.7.1"
