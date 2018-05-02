@@ -245,15 +245,9 @@ impl Con for ConSerial {
             match self.uart {
                 Some(ref mut uart) =>
                     for c in s.chars() {
-                        // TODO: this is duplicated
-                        // We want default escaping *except* for quotes as they are regular printable ascii characters
-                        if c == '"' || c == '\'' {
-                            uart.write_byte(c as u8);
-                        } else {
-                            for e in c.escape_default() {
-                                uart.write_byte(c as u8);
-                            }
-                        }
+                        // TODO: for now we assume a terminal that understands unicode. this is helpful
+                        // as it means our colour control codes also get passed through unescaped
+                        uart.write_byte(c as u8);
                     },
                 None => (),
             }
@@ -261,6 +255,15 @@ impl Con for ConSerial {
     }
     fn prepare(&mut self, v: V) {
         //unimplemented!()
+        // TODO: option for disabling ansi terminal assumption
+        let mut wbf = |col| fmt::Write::write_fmt(self as &mut EarlyCon, format_args!("\x1B[1;{}m", col));
+        match v {
+            V::Panic => wbf(31),
+            V::Error => wbf(33),
+            V::Info => wbf(37),
+            V::Debug => wbf(32),
+            V::Trace => wbf(34),
+        };
     }
     fn end(&mut self) {
         //unimplemented!()
