@@ -7,6 +7,9 @@
 #![feature(ptr_offset_from)]
 #![feature(pattern)]
 #![feature(associated_type_defaults)]
+#![feature(alloc)]
+#![feature(global_allocator)]
+#![feature(allocator_api)]
 #![no_std]
 #![no_main]
 #![feature(plugin)]
@@ -19,6 +22,8 @@ extern crate x86;
 extern crate bitflags;
 #[macro_use]
 extern crate bitfield;
+#[macro_use]
+extern crate alloc;
 //extern crate compiler_builtins;
 
 #[macro_use]
@@ -35,6 +40,20 @@ pub use panic::*;
 
 use drivers::Serial;
 
+struct NullAlloc;
+
+#[global_allocator]
+static ALLOCATOR: NullAlloc = NullAlloc;
+
+unsafe impl alloc::alloc::GlobalAlloc for NullAlloc {
+    unsafe fn alloc(&self, layout: core::alloc::Layout) -> *mut core::alloc::Opaque {
+        unimplemented!()
+    }
+    unsafe fn dealloc(&self, ptr: *mut core::alloc::Opaque, layout: core::alloc::Layout) {
+        unimplemented!()
+    }
+}
+
 #[no_mangle]
 pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
     if arg1 as u32 == multiboot::SIGNATURE_EAX {
@@ -43,6 +62,7 @@ pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
         panic!("Unknown boot style");
     }
     boot::cmdline::process();
+    print!(Info, "arg1 is {:x}", arg1);
     print!(Panic, "Panic");
     print!(Error, "Error");
     print!(Info, "Info");
@@ -50,3 +70,10 @@ pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
     print!(Trace, "Trace");
     loop {}
 }
+
+#[lang = "oom"]
+#[no_mangle]
+pub extern fn rust_oom() -> ! {
+    panic!("oom");
+}
+
