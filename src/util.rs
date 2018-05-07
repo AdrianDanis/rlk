@@ -13,3 +13,9 @@ pub fn split_first_str<'a, P: core::str::pattern::Pattern<'a>> (slice: &'a str, 
         None => ("", ""),
     }
 }
+
+pub mod units {
+    pub const KB: usize = 1024;
+    pub const MB: usize = KB * 1024;
+    pub const GB: usize = MB * 1024;
+}

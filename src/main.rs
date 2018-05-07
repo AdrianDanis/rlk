@@ -10,6 +10,7 @@
 #![feature(alloc)]
 #![feature(global_allocator)]
 #![feature(allocator_api)]
+#![feature(ptr_internals)]
 #![no_std]
 #![no_main]
 #![feature(plugin)]
@@ -35,10 +36,12 @@ mod boot;
 mod panic;
 mod util;
 mod drivers;
+mod vspace;
 
 pub use panic::*;
 
 use drivers::Serial;
+use vspace::window::Window;
 
 struct NullAlloc;
 
@@ -54,6 +57,11 @@ unsafe impl alloc::alloc::GlobalAlloc for NullAlloc {
     }
 }
 
+struct Foo {
+    c: u8,
+    col: u8,
+}
+
 #[no_mangle]
 pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
     if arg1 as u32 == multiboot::SIGNATURE_EAX {
@@ -61,6 +69,8 @@ pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
     } else {
         panic!("Unknown boot style");
     }
+    let boot_window = boot::vspace::Low::make();
+    let f: vspace::window::VObj<Foo> = boot_window.wrap(0xb000usize).unwrap();
     boot::cmdline::process();
     print!(Info, "arg1 is {:x}", arg1);
     print!(Panic, "Panic");
