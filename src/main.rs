@@ -71,13 +71,13 @@ pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
         panic!("Unknown boot style");
     }
     boot::cmdline::process();
-    let mut f: &WBox<Foo>;
     {
         let boot_window = unsafe{boot::vspace::Low::make()};
+        let mut f: WBox<Foo>;
         f = unsafe{boot_window.declare_obj(0xb8000usize).unwrap()};
+        print!(Info, "using ptr");
+        unsafe{f.ptr.as_mut().c = 0};
     }
-    print!(Info, "using ptr");
-    unsafe{f.ptr.as_mut().c = 0};
     print!(Info, "arg1 is {:x}", arg1);
     print!(Panic, "Panic");
     print!(Error, "Error");

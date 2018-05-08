@@ -3,8 +3,10 @@
 use vspace::Window;
 use util::units::GB;
 use core::ops::Range;
+use core::marker::PhantomData;
+use core::borrow::Borrow;
 
-pub struct Low;
+pub struct Low(PhantomData<usize>);
 
 /// Beginning of low 1-1 mapped memory
 ///
@@ -26,12 +28,18 @@ impl Low {
     /// This must only be created if this *is* the active window and with a lifetime that
     /// ensures it is deleted at least before we switch away.
     pub unsafe fn make() -> Self {
-        Low
+        Low(PhantomData)
     }
 }
 
 impl Drop for Low {
     fn drop(&mut self) {
         print!(Info, "dropped");
+    }
+}
+
+impl Borrow<PhantomData<usize>> for Low {
+    fn borrow(&self) -> &PhantomData<usize> {
+        &self.0
     }
 }
