@@ -15,6 +15,7 @@ use core::marker::PhantomData;
 use core::ops::Range;
 use core::mem::{align_of, size_of};
 use core::borrow::Borrow;
+use util::Empty;
 
 /// Window allocated box
 ///
@@ -23,10 +24,10 @@ use core::borrow::Borrow;
 /// what objects exist
 pub struct WBox<'a, T: ?Sized> {
     pub ptr: Unique<T>,
-    borrow: &'a PhantomData<usize>,
+    borrow: &'a Empty,
 }
 
-pub unsafe trait Window where Self: Borrow<PhantomData<usize>> {
+pub unsafe trait Window where Self: Empty + Sized {
     /// Declares that an object exists at this virtual address
     ///
     /// A reference to the object is potentially produced that has a lifetime for
@@ -39,7 +40,7 @@ pub unsafe trait Window where Self: Borrow<PhantomData<usize>> {
     /// constructed an object in that range.
     unsafe fn declare_obj<'a, T>(&self, base_vaddr: usize) -> Option<WBox<T>> {
         if (base_vaddr % align_of::<T>()) == 0 && self.range_valid([base_vaddr..base_vaddr + size_of::<T>()]) {
-            Some(WBox{ptr: Unique::new_unchecked(base_vaddr as *mut T), borrow: self.borrow()})
+            Some(WBox{ptr: Unique::new_unchecked(base_vaddr as *mut T), borrow: self as &Empty})
         } else {
             None
         }

@@ -14,6 +14,13 @@ pub fn split_first_str<'a, P: core::str::pattern::Pattern<'a>> (slice: &'a str, 
     }
 }
 
+/// Empty trait with no methods
+///
+/// Useful if you want to guarantee that an object has some trait that can be converted into
+/// a trait object. Only useful for a marker lifetime as the trait object itself will have
+/// no functionality
+pub trait Empty {}
+
 pub mod units {
     pub const KB: usize = 1024;
     pub const MB: usize = KB * 1024;
