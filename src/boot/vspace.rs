@@ -13,13 +13,19 @@ pub struct Low;
 const LOW: [Range<usize>; 1] = [1..4*GB];
 
 unsafe impl<'a> Window<'a> for Low {
-    fn range_valid(range: [Range<usize>; 1]) -> bool {
+    fn range_valid(&self, range: [Range<usize>; 1]) -> bool {
         LOW.contains(&range[0])
     }
 }
 
 impl Low {
-    pub fn make() -> Self {
+    /// Construct the low vspace window
+    ///
+    /// # Safety
+    ///
+    /// This must only be created if this *is* the active window and with a lifetime that
+    /// ensures it is deleted at least before we switch away.
+    pub unsafe fn make() -> Self {
         Low
     }
 }

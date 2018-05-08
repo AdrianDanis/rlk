@@ -69,8 +69,8 @@ pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
     } else {
         panic!("Unknown boot style");
     }
-    let boot_window = boot::vspace::Low::make();
-    let f: vspace::window::VObj<Foo> = boot_window.wrap(0xb000usize).unwrap();
+    let boot_window = unsafe{boot::vspace::Low::make()};
+    let f: vspace::window::WBox<Foo> = unsafe{boot_window.declare_obj(0xb000usize).unwrap()};
     boot::cmdline::process();
     print!(Info, "arg1 is {:x}", arg1);
     print!(Panic, "Panic");

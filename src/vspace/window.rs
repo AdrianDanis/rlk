@@ -22,39 +22,6 @@ use core::mem::{align_of, size_of};
 /// what objects exist
 pub struct WBox<T: ?Sized>(Unique<T>);
 
-/// Defines a virtual address range bound to a particular window
-pub struct VRange<'a, T: Window<'a> + 'a> {
-    /// Virtual address range
-    range: Range<usize>,
-    /// Phantom data that 'binds' this vrange to a specific Window in the type system
-    marker: PhantomData<&'a T>,
-}
-
-impl<'a, T: Window<'a> + 'a> VRange<'a, T> {
-    fn new(range: Range<usize>) -> VRange<'a, T> {
-        VRange{range: range, marker: PhantomData}
-    }
-}
-
-pub struct VObj<'a, W:Window<'a> + 'a, T> {
-    /// Underlying range
-    ///
-    /// This must always be constructed with a base,len and alignment that is valid for type T
-    range: VRange<'a, W>,
-    /// Marker to consume T
-    marker: PhantomData<T>,
-}
-
-impl<'a, W:Window<'a> + 'a, T> VObj<'a, W, T> {
-    fn from_range(range: VRange<'a, W>) -> Option<VObj<'a, W, T>> {
-        if (range.range.start % align_of::<T>()) == 0 && range.range.start + size_of::<T>() <= range.range.end {
-            Some(VObj{range: range, marker: PhantomData})
-        } else {
-            None
-        }
-    }
-}
-
 pub unsafe trait Window<'a> where Self: Sized {
     /// Declares that an object exists at this virtual address
     ///
@@ -63,28 +30,16 @@ pub unsafe trait Window<'a> where Self: Sized {
     ///
     /// # Safety
     ///
-    /// This is unsafe as even if the VRange is valid it still requires that a correctly
+    /// This is unsafe as even if the range is valid it still requires that a correctly
     /// construct T lives inside that virtual address range and that you have not already
     /// constructed an object in that range.
-    unsafe fn declare<T>(vobj: VObj<'a, Self, T>) -> WBox<T> {
-        WBox(Unique::new_unchecked(vobj.range.range.start as *mut T))
-    }
-    /// Check if a range is valid
-    fn range_valid(range: [Range<usize>; 1]) -> bool;
-    /// Construct a virtual address range
-    fn make_range(range: [Range<usize>; 1]) -> Option<VRange<'a, Self>> {
-        if Self::range_valid(range.clone()) {
-            Some(VRange::new(range[0].clone()))
+    unsafe fn declare_obj<T>(&self, base_vaddr: usize) -> Option<WBox<T>> {
+        if (base_vaddr % align_of::<T>()) == 0 && self.range_valid([base_vaddr..base_vaddr + size_of::<T>()]) {
+            Some(WBox(Unique::new_unchecked(base_vaddr as *mut T)))
         } else {
             None
         }
     }
-    /// Construct a virtual object
-    fn make_obj<T: Sized>(base: usize) -> Option<VObj<'a, Self, T>> {
-        Self::make_range([base..base + size_of::<T>()])
-            .and_then(|x| VObj::from_range(x))
-    }
-    fn wrap<T: Sized>(&self, base: usize) -> Option<VObj<'a, Self, T>> {
-        Self::make_obj(base)
-    }
+    /// Check if a range is valid
+    fn range_valid(&self, range: [Range<usize>; 1]) -> bool;
 }
