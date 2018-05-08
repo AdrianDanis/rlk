@@ -1,3 +1,5 @@
 //! General vspace definitions
 
-pub mod window;
+mod window;
+
+pub use self::window::{Window, WBox};

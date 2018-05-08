@@ -1,6 +1,6 @@
 //! Definitions for boot time vspaces
 
-use vspace::window::Window;
+use vspace::Window;
 use util::units::GB;
 use core::ops::Range;
 
@@ -12,9 +12,9 @@ pub struct Low;
 /// as this is UB.
 const LOW: [Range<usize>; 1] = [1..4*GB];
 
-unsafe impl<'a> Window<'a> for Low {
+unsafe impl Window for Low {
     fn range_valid(&self, range: [Range<usize>; 1]) -> bool {
-        LOW.contains(&range[0])
+        LOW[0].contains(&range[0].start) && LOW[0].contains(&(range[0].end - 1))
     }
 }
 
@@ -27,5 +27,11 @@ impl Low {
     /// ensures it is deleted at least before we switch away.
     pub unsafe fn make() -> Self {
         Low
+    }
+}
+
+impl Drop for Low {
+    fn drop(&mut self) {
+        print!(Info, "dropped");
     }
 }

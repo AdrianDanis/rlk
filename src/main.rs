@@ -11,6 +11,7 @@
 #![feature(global_allocator)]
 #![feature(allocator_api)]
 #![feature(ptr_internals)]
+#![feature(range_contains)]
 #![no_std]
 #![no_main]
 #![feature(plugin)]
@@ -41,7 +42,7 @@ mod vspace;
 pub use panic::*;
 
 use drivers::Serial;
-use vspace::window::Window;
+use vspace::{Window, WBox};
 
 struct NullAlloc;
 
@@ -69,9 +70,14 @@ pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
     } else {
         panic!("Unknown boot style");
     }
-    let boot_window = unsafe{boot::vspace::Low::make()};
-    let f: vspace::window::WBox<Foo> = unsafe{boot_window.declare_obj(0xb000usize).unwrap()};
     boot::cmdline::process();
+    let mut f: &WBox<Foo>;
+    {
+        let boot_window = unsafe{boot::vspace::Low::make()};
+        f = unsafe{boot_window.declare_obj(0xb8000usize).unwrap()};
+    }
+    print!(Info, "using ptr");
+    unsafe{f.ptr.as_mut().c = 0};
     print!(Info, "arg1 is {:x}", arg1);
     print!(Panic, "Panic");
     print!(Error, "Error");
