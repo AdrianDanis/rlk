@@ -1,5 +1,7 @@
 //! Heap allocation for the kernel
 
+mod steal;
+
 use core::alloc::{Layout, Opaque};
 use alloc::alloc::GlobalAlloc;
 
