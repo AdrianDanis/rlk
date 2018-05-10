@@ -38,40 +38,21 @@ mod panic;
 mod util;
 mod drivers;
 mod vspace;
+mod heap;
 
 pub use panic::*;
 
 use drivers::Serial;
 use vspace::{Window};
 
-struct AllocProxy {
-    alloc_fn: unsafe fn(core::alloc::Layout) -> *mut core::alloc::Opaque,
-    dealloc_fn: unsafe fn(*mut core::alloc::Opaque, core::alloc::Layout),
-}
-
-unsafe fn alloc_error(layout: core::alloc::Layout) -> *mut core::alloc::Opaque {
-    panic!("Allocation before allocator is set")
-}
-
-unsafe fn dealloc_error(ptr: *mut core::alloc::Opaque, layout: core::alloc::Layout) {
-    panic!("Deallocation before allocator is set")
-}
-
-#[global_allocator]
-static mut ALLOCATOR: AllocProxy = AllocProxy {alloc_fn: alloc_error, dealloc_fn: dealloc_error};
-
-unsafe impl alloc::alloc::GlobalAlloc for AllocProxy {
-    unsafe fn alloc(&self, layout: core::alloc::Layout) -> *mut core::alloc::Opaque {
-        (self.alloc_fn)(layout)
-    }
-    unsafe fn dealloc(&self, ptr: *mut core::alloc::Opaque, layout: core::alloc::Layout) {
-        (self.dealloc_fn)(ptr, layout)
-    }
-}
-
 struct Foo {
     c: u8,
     col: u8,
+}
+
+extern {
+    // Allocator has to be defined in the root of the crate so we extern it here and actually declare in heap
+    static ALLOCATOR: heap::AllocProxy;
 }
 
 #[no_mangle]
