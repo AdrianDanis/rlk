@@ -57,7 +57,6 @@ construct_pml4:
     movl $phys_pdpt_low, %edi
     movl $0x9B, %eax
     movl %eax, (%edi)
-    movl %eax, 4080(%edi)
     addl $0x40000000, %eax
     movl %eax, 8(%edi)
     addl $0x40000000, %eax
