@@ -44,17 +44,28 @@ pub use panic::*;
 use drivers::Serial;
 use vspace::{Window};
 
-struct NullAlloc;
+struct AllocProxy {
+    alloc_fn: unsafe fn(core::alloc::Layout) -> *mut core::alloc::Opaque,
+    dealloc_fn: unsafe fn(*mut core::alloc::Opaque, core::alloc::Layout),
+}
+
+unsafe fn alloc_error(layout: core::alloc::Layout) -> *mut core::alloc::Opaque {
+    panic!("Allocation before allocator is set")
+}
+
+unsafe fn dealloc_error(ptr: *mut core::alloc::Opaque, layout: core::alloc::Layout) {
+    panic!("Deallocation before allocator is set")
+}
 
 #[global_allocator]
-static ALLOCATOR: NullAlloc = NullAlloc;
+static mut ALLOCATOR: AllocProxy = AllocProxy {alloc_fn: alloc_error, dealloc_fn: dealloc_error};
 
-unsafe impl alloc::alloc::GlobalAlloc for NullAlloc {
+unsafe impl alloc::alloc::GlobalAlloc for AllocProxy {
     unsafe fn alloc(&self, layout: core::alloc::Layout) -> *mut core::alloc::Opaque {
-        unimplemented!()
+        (self.alloc_fn)(layout)
     }
     unsafe fn dealloc(&self, ptr: *mut core::alloc::Opaque, layout: core::alloc::Layout) {
-        unimplemented!()
+        (self.dealloc_fn)(ptr, layout)
     }
 }
 
