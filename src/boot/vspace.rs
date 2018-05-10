@@ -7,31 +7,20 @@ use core::ops::Range;
 use core::marker::PhantomData;
 use core::borrow::Borrow;
 
-pub struct Low;
+pub struct Init;
 
-/// Beginning of low 1-1 mapped memory
-///
-/// This is 1 and not 0 as we must avoid creationg objects in rust that have the 0 pointer
-/// as this is UB.
-const LOW: [Range<usize>; 1] = [1..4*GB];
+/// Beginning of initial high memory window which is only 4gb
+const INIT: [Range<usize>; 1] = [0xffffff8000000000..0xffffff8000000000 + 4*GB];
 
-unsafe impl Window for Low {
+unsafe impl Window for Init {
     fn range_valid(&self, range: [Range<usize>; 1]) -> bool {
-        LOW[0].contains(&range[0].start) && LOW[0].contains(&(range[0].end - 1))
+        INIT[0].contains(&range[0].start) && INIT[0].contains(&(range[0].end - 1))
     }
 }
 
-impl Low {
-    /// Construct the low vspace window
-    ///
-    /// # Safety
-    ///
-    /// This must only be created if this *is* the active window and with a lifetime that
-    /// ensures it is deleted at least before we switch away.
-    pub unsafe fn make() -> Self {
-        Low
+impl Init {
+    /// Construct the Init vspace window
+    pub fn make() -> Self {
+        Init
     }
-}
-
-impl Empty for Low {
 }

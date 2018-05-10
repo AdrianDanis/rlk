@@ -2,4 +2,4 @@
 
 mod window;
 
-pub use self::window::{Window, WBox};
+pub use self::window::{Window};

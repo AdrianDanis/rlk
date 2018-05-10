@@ -42,7 +42,7 @@ mod vspace;
 pub use panic::*;
 
 use drivers::Serial;
-use vspace::{Window, WBox};
+use vspace::{Window};
 
 struct NullAlloc;
 
@@ -72,11 +72,11 @@ pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
     }
     boot::cmdline::process();
     {
-        let boot_window = unsafe{boot::vspace::Low::make()};
-        let mut f: WBox<Foo>;
+        let boot_window = unsafe{boot::vspace::Init::make()};
+        let f: &'static mut Foo;
         f = unsafe{boot_window.declare_obj(0xb8000usize).unwrap()};
         print!(Info, "using ptr");
-        unsafe{f.ptr.as_mut().c = 0};
+        unsafe{f.c = 0};
     }
     print!(Info, "arg1 is {:x}", arg1);
     print!(Panic, "Panic");
