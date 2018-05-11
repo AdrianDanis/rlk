@@ -5,6 +5,7 @@ mod buddy;
 use core::alloc::{Layout, Opaque};
 use alloc::alloc::GlobalAlloc;
 use core::ops::Range;
+use state::KERNEL_WINDOW;
 
 pub struct AllocProxy {
     alloc_fn: unsafe fn(Layout) -> *mut Opaque,
@@ -19,8 +20,11 @@ unsafe fn dealloc_error(ptr: *mut Opaque, layout: Layout) {
     panic!("Deallocation before allocator is set")
 }
 
-#[global_allocator]
-static mut ALLOCATOR: AllocProxy = AllocProxy {alloc_fn: alloc_error, dealloc_fn: dealloc_error};
+impl AllocProxy {
+    pub const fn new() -> AllocProxy {
+        AllocProxy {alloc_fn: alloc_error, dealloc_fn: dealloc_error }
+    }
+}
 
 unsafe impl GlobalAlloc for AllocProxy {
     unsafe fn alloc(&self, layout: Layout) -> *mut Opaque {
@@ -33,6 +37,8 @@ unsafe impl GlobalAlloc for AllocProxy {
 
 const MAX_USED_MEM: usize = 8;
 const MAX_EXTRA_MEM: usize = 8;
+// TODO: build some kind of statically allocated array type out of this, but array types are
+// currently bloody annoying to try and generalize and needs const generics (see issue #44580)
 /// Regions of memory that we need to exclude from memory we are given
 static mut USED_MEM: [Option<Range<usize>>; MAX_USED_MEM] = [None, None, None, None, None, None, None, None];
 /// Regions of memory that could not be added early due to not being in the initial kernel window
@@ -47,5 +53,23 @@ pub fn add_used_mem(range: [Range<usize>; 1]) {
             }
         }
     }
-    panic!("Failed to record used memory. Increase MAX_USED_MEM")
+    panic!("Failed to record used memory {:?}. Increase MAX_USED_MEM", range[0])
+}
+
+pub fn add_mem(range: [Range<usize>; 1]) {
+    // Check if it is valid in the window
+    unsafe {
+        if (!KERNEL_WINDOW.range_valid(range.clone())) {
+            for iter in EXTRA_MEM.iter_mut() {
+                if iter.is_none() {
+                    (*iter) = Some(range[0].clone());
+                    return;
+                }
+            }
+            print!(Info, "Had to throw away memory region {:?} as it is not in kernel window and ran out of EXTRA_MEM slots. Consider increasing MAX_EXTRA_MEM", range[0]);
+            return;
+        }
+    }
+    // Provide to the buddy allocator
+    unimplemented!()
 }

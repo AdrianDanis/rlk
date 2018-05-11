@@ -78,11 +78,15 @@ fn paddr_to_slice<'a>(p: PAddr, sz: usize) -> Option<&'a [u8]> {
 }
 
 pub fn init(mb: usize) {
+    // Process cmdline as we want to get this done as soon as possible for earlycon
     let mb = unsafe{Multiboot::new(mb as PAddr, paddr_to_slice)}.unwrap();
-    match mb.command_line() {
-        // TODO: should be initializing basic paddr allocators etc before this but for now
-        // we are just reating the command line as a 'static str
-        Some(x) => boot::cmdline::set(unsafe{mem::transmute(x)}),
-        None => boot::cmdline::set(""),
+    if let Some(x) = mb.command_line() {
+        boot::cmdline::process(unsafe{mem::transmute(x)});
+    }
+    // Process memory map and initialize allocators
+
+    // Now that we have an allocator set the cmdline to preserve it
+    if let Some(x) = mb.command_line() {
+        boot::cmdline::set(unsafe{mem::transmute(x)});
     }
 }

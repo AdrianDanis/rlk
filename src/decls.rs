@@ -13,6 +13,11 @@ use core;
 // Random bytes curtesy of random.org
 pub const DECL_NONCE: u64 = 0x4ea4789985e1ad56;
 
+/// Declares a function to run on a cmdline switch
+///
+/// cmdline options are processed *very* early, before there is even memory allocation
+/// available, so these functions should do absolute minimal work to record that an
+/// option took place.
 pub struct CMDLine {
     pub option: &'static str,
     pub f: fn(&str) -> (),

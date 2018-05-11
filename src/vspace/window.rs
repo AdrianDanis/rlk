@@ -23,6 +23,9 @@ pub unsafe trait Window {
 /// Virtual addresses (for the kernel) are never allowed to go away and so the produced
 /// reference has a static lifetime.
 ///
+/// This is a module level function so that the Window trait is able to be turned into a
+/// trait object.
+///
 /// # Safety
 ///
 /// This is unsafe as even if the range is valid it still requires that a correctly

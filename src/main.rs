@@ -51,10 +51,9 @@ struct Foo {
     col: u8,
 }
 
-extern {
-    // Allocator has to be defined in the root of the crate so we extern it here and actually declare in heap
-    static ALLOCATOR: heap::AllocProxy;
-}
+/// Allocator has to be defined in the root of the crate so we extern it here and actually declare in heap
+#[global_allocator]
+static ALLOCATOR: heap::AllocProxy = heap::AllocProxy::new();
 
 #[no_mangle]
 pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
@@ -63,7 +62,6 @@ pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
     } else {
         panic!("Unknown boot style");
     }
-    boot::cmdline::process();
     {
         let f: &'static mut Foo;
         f = unsafe{declare_obj(state::KERNEL_WINDOW, 0xb8000usize).unwrap()};
