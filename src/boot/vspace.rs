@@ -20,7 +20,9 @@ unsafe impl Window for Init {
 
 impl Init {
     /// Construct the Init vspace window
-    pub fn make() -> Self {
+    pub const fn make() -> Self {
         Init
     }
 }
+
+pub static INIT_WINDOW: Init = Init::make();

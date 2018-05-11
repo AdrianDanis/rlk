@@ -14,23 +14,24 @@ use core::ops::Range;
 use core::mem::{align_of, size_of, transmute};
 
 pub unsafe trait Window {
-    /// Declares that an object exists at this virtual address
-    ///
-    /// Virtual addresses (for the kernel) are never allowed to go away and so the produced
-    /// reference has a static lifetime.
-    ///
-    /// # Safety
-    ///
-    /// This is unsafe as even if the range is valid it still requires that a correctly
-    /// construct T lives inside that virtual address range and that you have not already
-    /// constructed an object in that range.
-    unsafe fn declare_obj<'a, T>(&self, base_vaddr: usize) -> Option<&'static mut T> {
-        if (base_vaddr % align_of::<T>()) == 0 && self.range_valid([base_vaddr..base_vaddr + size_of::<T>()]) {
-            Some(transmute(base_vaddr as *mut T))
-        } else {
-            None
-        }
-    }
     /// Check if a range is valid
     fn range_valid(&self, range: [Range<usize>; 1]) -> bool;
+}
+
+/// Declares that an object exists at this virtual address
+///
+/// Virtual addresses (for the kernel) are never allowed to go away and so the produced
+/// reference has a static lifetime.
+///
+/// # Safety
+///
+/// This is unsafe as even if the range is valid it still requires that a correctly
+/// construct T lives inside that virtual address range and that you have not already
+/// constructed an object in that range.
+pub unsafe fn declare_obj<'a, T>(window: &'a Window, base_vaddr: usize) -> Option<&'static mut T> {
+    if (base_vaddr % align_of::<T>()) == 0 && window.range_valid([base_vaddr..base_vaddr + size_of::<T>()]) {
+        Some(transmute(base_vaddr as *mut T))
+    } else {
+        None
+    }
 }

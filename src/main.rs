@@ -39,11 +39,12 @@ mod util;
 mod drivers;
 mod vspace;
 mod heap;
+mod state;
 
 pub use panic::*;
 
 use drivers::Serial;
-use vspace::{Window};
+use vspace::{Window, declare_obj};
 
 struct Foo {
     c: u8,
@@ -64,9 +65,8 @@ pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
     }
     boot::cmdline::process();
     {
-        let boot_window = unsafe{boot::vspace::Init::make()};
         let f: &'static mut Foo;
-        f = unsafe{boot_window.declare_obj(0xb8000usize).unwrap()};
+        f = unsafe{declare_obj(state::KERNEL_WINDOW, 0xb8000usize).unwrap()};
         print!(Info, "using ptr");
         unsafe{f.c = 0};
     }
