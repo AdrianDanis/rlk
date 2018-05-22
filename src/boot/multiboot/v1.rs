@@ -1,6 +1,7 @@
 use multiboot::*;
 use boot;
 use state::KERNEL_WINDOW;
+use heap;
 
 use core::{mem, slice};
 
@@ -89,6 +90,13 @@ pub fn init(mb: usize) {
     // Now mark anything additional from multiboot specifically
 
     // Add free memory
+    if let Some(mut memiter) = mb.memory_regions() {
+        print!(Info, "Parsing regions");
+        memiter.filter(|x| x.memory_type() == MemoryType::Available)
+            .for_each(|x| heap::add_mem_physical([x.base_address() as usize..x.base_address() as usize+x.length() as usize]));
+    } else {
+        print!(Error, "Found no memory regions");
+    }
 
     // Enable the heap
 

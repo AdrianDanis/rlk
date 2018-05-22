@@ -19,7 +19,9 @@ use core::mem::{align_of, size_of, transmute};
 /// The window understands what virtual address ranges are valid, and how to convert
 /// between these virtual and their corresponding physical addresses. As a window might
 /// have the same physical memory viewable from different virtual addresses converting
-/// between vaddr->paddr->vaddr is not guaranteed to be the identity function.
+/// between vaddr->paddr->vaddr is not guaranteed to be the identity function, however
+/// conversations are expected to be stable such that vaddr->paddr->vaddr->paddr->vaddr
+/// will keep producing the same paddr and vaddr
 pub unsafe trait Window {
     /// Check if a range is valid
     fn range_valid(&self, range: [Range<usize>; 1]) -> bool;

@@ -35,23 +35,22 @@ unsafe impl GlobalAlloc for AllocProxy {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-enum RegionTag {
-    /// Memory is used and should never be allocated
-    USED,
-    /// Memory does not fit in the initial kernel window and should be added later
-    HIGH,
-    /// Memory is used during boot but can be used after that
-    BOOT,
+#[derive(Debug, Clone)]
+enum StoredMemRegion {
+    /// Memory is used and should never be allocated, stored as virtual address
+    USED(Range<usize>),
+    /// Memory does not fit in the initial kernel window and should be added later, stored by physical address
+    HIGH(Range<usize>),
+    /// Memory is used during boot but can be used after that, stored by virtual address
+    BOOT(Range<usize>),
 }
 
 const MAX_REGIONS: usize = 8;
-const MAX_EXTRA_MEM: usize = 8;
 // TODO: build some kind of statically allocated array type out of this, but array types are
 // currently bloody annoying to try and generalize and needs const generics (see issue #44580)
-static mut MEM_REGIONS: [Option<(Range<usize>, RegionTag)>; MAX_REGIONS] = [None, None, None, None, None, None, None, None];
+static mut MEM_REGIONS: [Option<StoredMemRegion>; MAX_REGIONS] = [None, None, None, None, None, None, None, None];
 
-fn add_mem_region(region: (Range<usize>, RegionTag)) -> bool {
+fn add_mem_region(region: StoredMemRegion) -> bool {
     unsafe {
         for iter in MEM_REGIONS.iter_mut() {
             if iter.is_none() {
@@ -63,23 +62,34 @@ fn add_mem_region(region: (Range<usize>, RegionTag)) -> bool {
     false
 }
 
+/// Mark a region of virtual memory as already used
 pub fn add_used_mem(range: [Range<usize>; 1]) {
-    if !add_mem_region((range[0].clone(), RegionTag::USED)) {
+    if !add_mem_region(StoredMemRegion::USED(range[0].clone())) {
         panic!("Failed to record used memory {:?}. Increase MAX_USED_MEM", range[0]);
     }
     print!(Info, "Marked region [{:x}..{:x}] as initially allocated", range[0].start, range[0].end);
 }
 
+/// Add memory by virtual address
 pub fn add_mem(range: [Range<usize>; 1]) {
-    // Check if it is valid in the window
+    assert!(unsafe{KERNEL_WINDOW.range_valid(range.clone())});
+    // Provide to the buddy allocator
+    print!(Info, "Adding usable memory region [{:x}..{:x}]", range[0].start, range[0].end);
+}
+
+/// Adds memory by physical address
+///
+/// This is a more general version of `add_mem` and allows for adding memory that is not yet
+/// available to describe virtually
+pub fn add_mem_physical(range: [Range<usize>; 1]) {
     unsafe {
-        if (!KERNEL_WINDOW.range_valid(range.clone())) {
-            if !add_mem_region((range[0].clone(), RegionTag::HIGH)) {
+        if let Some(vaddr) = KERNEL_WINDOW.paddr_to_vaddr_range(range.clone()) {
+            add_mem(vaddr)
+        } else {
+            if !add_mem_region(StoredMemRegion::HIGH(range[0].clone())) {
                 print!(Info, "Had to throw away memory region {:?} as it is not in kernel window and ran out of EXTRA_MEM slots. Consider increasing MAX_EXTRA_MEM", range[0]);
                 return;
             }
         }
     }
-    // Provide to the buddy allocator
-    unimplemented!()
 }

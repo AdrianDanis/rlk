@@ -22,6 +22,15 @@ const MAX_ORDER: u32 = 30;
 
 const NUM_ORDERS: usize = MAX_ORDER as usize - MIN_ORDER as usize + 1;
 
-struct Buddy {
+pub struct Buddy {
     heads: [Option<Node>; NUM_ORDERS],
+}
+
+impl Buddy {
+    pub const fn new() -> Buddy {
+        Buddy { heads: [None, None, None, None, None, None, None, None, None, None,
+                        None, None, None, None, None, None, None, None, None, None,
+                        None, None, None, None]
+        }
+    }
 }
