@@ -87,6 +87,6 @@ pub fn init(mb: usize) {
 
     // Now that we have an allocator set the cmdline to preserve it
     if let Some(x) = mb.command_line() {
-        boot::cmdline::set(unsafe{mem::transmute(x)});
+        boot::cmdline::set(x);
     }
 }
