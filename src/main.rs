@@ -12,6 +12,7 @@
 #![feature(allocator_api)]
 #![feature(ptr_internals)]
 #![feature(range_contains)]
+#![feature(align_offset)]
 #![no_std]
 #![no_main]
 #![feature(plugin)]

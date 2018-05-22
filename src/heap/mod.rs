@@ -50,6 +50,9 @@ const MAX_REGIONS: usize = 8;
 // currently bloody annoying to try and generalize and needs const generics (see issue #44580)
 static mut MEM_REGIONS: [Option<StoredMemRegion>; MAX_REGIONS] = [None, None, None, None, None, None, None, None];
 
+/// Global buddy allocator
+static mut BUDDY: buddy::Buddy = buddy::Buddy::new();
+
 fn add_mem_region(region: StoredMemRegion) -> bool {
     unsafe {
         for iter in MEM_REGIONS.iter_mut() {
@@ -71,17 +74,18 @@ pub fn add_used_mem(range: [Range<usize>; 1]) {
 }
 
 /// Add memory by virtual address
-pub fn add_mem(range: [Range<usize>; 1]) {
+pub unsafe fn add_mem(range: [Range<usize>; 1]) {
     assert!(unsafe{KERNEL_WINDOW.range_valid(range.clone())});
     // Provide to the buddy allocator
     print!(Info, "Adding usable memory region [{:x}..{:x}]", range[0].start, range[0].end);
+    BUDDY.add(range[0].start, range[0].end - range[0].start);
 }
 
 /// Adds memory by physical address
 ///
 /// This is a more general version of `add_mem` and allows for adding memory that is not yet
 /// available to describe virtually
-pub fn add_mem_physical(range: [Range<usize>; 1]) {
+pub unsafe fn add_mem_physical(range: [Range<usize>; 1]) {
     unsafe {
         if let Some(vaddr) = KERNEL_WINDOW.paddr_to_vaddr_range(range.clone()) {
             add_mem(vaddr)
