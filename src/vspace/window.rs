@@ -17,7 +17,14 @@ pub unsafe trait Window {
     /// Check if a range is valid
     fn range_valid(&self, range: [Range<usize>; 1]) -> bool;
     /// Convert a virtual address to a physical address
-    fn vaddr_to_paddr(&self, vaddr: usize) -> Option<usize>;
+    fn vaddr_to_paddr(&self, vaddr: usize) -> Option<usize> {
+        self.vaddr_to_paddr_range([vaddr..vaddr+1]).map(|x| x[0].start)
+    }
+    /// Convert a virtual address range to a physical address range
+    ///
+    /// Compared to `vaddr_to_paddr` this ensures that the underlying physical address
+    /// range is contiguous
+    fn vaddr_to_paddr_range(&self, range: [Range<usize>; 1]) -> Option<[Range<usize>; 1]>;
 }
 
 /// Declares that an object exists at this virtual address

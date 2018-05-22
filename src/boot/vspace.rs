@@ -32,11 +32,11 @@ unsafe impl Window for Init {
         INIT[0].contains(&range[0].start) && INIT[0].contains(&(range[0].end - 1)) ||
         INIT_IMAGE[0].contains(&range[0].start) && INIT_IMAGE[0].contains(&(range[0].end - 1))
     }
-    fn vaddr_to_paddr(&self, vaddr: usize) -> Option<usize> {
-        if INIT[0].contains(&vaddr) {
-            Some(vaddr - INIT[0].start)
-        } else if INIT_IMAGE[0].contains(&vaddr) {
-            Some(vaddr - INIT_IMAGE[0].start)
+    fn vaddr_to_paddr_range(&self, range: [Range<usize>; 1]) -> Option<[Range<usize>; 1]> {
+        if INIT[0].contains(&range[0].start) && INIT[0].contains(&(range[0].end - 1)) {
+            Some([range[0].start - INIT[0].start..range[0].end - INIT[0].start])
+        } else if INIT_IMAGE[0].contains(&range[0].start) && INIT_IMAGE[0].contains(&(range[0].end - 1)) {
+            Some([range[0].start - INIT_IMAGE[0].start..range[0].end - INIT_IMAGE[0].start])
         } else {
             None
         }
