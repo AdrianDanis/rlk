@@ -1,5 +1,6 @@
 use multiboot::*;
 use boot;
+use state::KERNEL_WINDOW;
 
 use core::{mem, slice};
 
@@ -69,11 +70,10 @@ impl Header {
     }
 }
 
-// TODO: make this common and check that the region is valid for whatever the current kernel window is
 fn paddr_to_slice<'a>(p: PAddr, sz: usize) -> Option<&'a [u8]> {
     unsafe {
-        let ptr = mem::transmute(p);
-        Some(slice::from_raw_parts(ptr, sz))
+        KERNEL_WINDOW.paddr_to_vaddr_range([p as usize..p as usize + sz])
+            .map(|x| slice::from_raw_parts(mem::transmute(x[0].start), sz))
     }
 }
 
