@@ -1,6 +1,7 @@
 //! Place for util routines that haven't found a home yet
 
 use core;
+use core::ops::Range;
 
 pub fn split_first_str<'a, P: core::str::pattern::Pattern<'a>> (slice: &'a str, predicate: P) -> (&'a str, &'a str) {
     let mut iter = slice.splitn(2, predicate);
@@ -12,6 +13,11 @@ pub fn split_first_str<'a, P: core::str::pattern::Pattern<'a>> (slice: &'a str, 
             },
         None => ("", ""),
     }
+}
+
+// TODO: make this generic instead of just being for usize
+pub fn range_contains(parent: &[Range<usize>; 1], child: &[Range<usize>; 1]) -> bool {
+    parent[0].contains(&child[0].start) && parent[0].contains(&(child[0].end - 1))
 }
 
 /// Empty trait with no methods

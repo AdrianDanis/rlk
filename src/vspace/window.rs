@@ -13,6 +13,13 @@
 use core::ops::Range;
 use core::mem::{align_of, size_of, transmute};
 
+// TODO: paddr and vaddr types?
+/// Generic trait for a view (aka Window) that is a virtual address spaces
+///
+/// The window understands what virtual address ranges are valid, and how to convert
+/// between these virtual and their corresponding physical addresses. As a window might
+/// have the same physical memory viewable from different virtual addresses converting
+/// between vaddr->paddr->vaddr is not guaranteed to be the identity function.
 pub unsafe trait Window {
     /// Check if a range is valid
     fn range_valid(&self, range: [Range<usize>; 1]) -> bool;
@@ -20,11 +27,20 @@ pub unsafe trait Window {
     fn vaddr_to_paddr(&self, vaddr: usize) -> Option<usize> {
         self.vaddr_to_paddr_range([vaddr..vaddr+1]).map(|x| x[0].start)
     }
+    /// Convert a physical address tyo a virtual address
+    fn paddr_to_vaddr(&self, paddr: usize) -> Option<usize> {
+        self.paddr_to_vaddr_range([paddr..paddr+1]).map(|x| x[0].start)
+    }
     /// Convert a virtual address range to a physical address range
     ///
     /// Compared to `vaddr_to_paddr` this ensures that the underlying physical address
     /// range is contiguous
     fn vaddr_to_paddr_range(&self, range: [Range<usize>; 1]) -> Option<[Range<usize>; 1]>;
+    /// Convert a physical address range to a virtual address range
+    ///
+    /// Compared to `paddr_to_vaddr` this ensures that the final virtual address
+    /// range is contiguous
+    fn paddr_to_vaddr_range(&self, range: [Range<usize>; 1]) -> Option<[Range<usize>; 1]>;
 }
 
 /// Declares that an object exists at this virtual address

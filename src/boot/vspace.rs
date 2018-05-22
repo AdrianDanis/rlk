@@ -2,7 +2,7 @@
 
 use vspace::Window;
 use util::units::GB;
-use util::Empty;
+use util::range_contains;
 use core::ops::Range;
 use core::marker::PhantomData;
 use core::borrow::Borrow;
@@ -21,6 +21,8 @@ const KERNEL_BASE: usize = 0xffffff8000000000;
 /// is the kernel itself and is initially mapped and the second gb is for any device mappings
 const KERNEL_IMAGE_BASE: usize = 0xffffffff80000000;
 
+/// Physical address of KERNEL_BASE and KERNEL_IMAGE_BASE
+const KERNEL_PHYS_BASE: usize = 0x0;
 
 /// Initial kernel window, which is only 4gb
 const INIT: [Range<usize>; 1] = [KERNEL_BASE..KERNEL_BASE + 4*GB];
@@ -29,17 +31,20 @@ const INIT_IMAGE: [Range<usize>; 1] = [KERNEL_IMAGE_BASE..KERNEL_IMAGE_BASE + GB
 
 unsafe impl Window for Init {
     fn range_valid(&self, range: [Range<usize>; 1]) -> bool {
-        INIT[0].contains(&range[0].start) && INIT[0].contains(&(range[0].end - 1)) ||
-        INIT_IMAGE[0].contains(&range[0].start) && INIT_IMAGE[0].contains(&(range[0].end - 1))
+        range_contains(&INIT, &range) || range_contains(&INIT_IMAGE, &range)
     }
     fn vaddr_to_paddr_range(&self, range: [Range<usize>; 1]) -> Option<[Range<usize>; 1]> {
-        if INIT[0].contains(&range[0].start) && INIT[0].contains(&(range[0].end - 1)) {
+        if range_contains(&INIT, &range) {
             Some([range[0].start - INIT[0].start..range[0].end - INIT[0].start])
-        } else if INIT_IMAGE[0].contains(&range[0].start) && INIT_IMAGE[0].contains(&(range[0].end - 1)) {
+        } else if range_contains(&INIT_IMAGE, &range) {
             Some([range[0].start - INIT_IMAGE[0].start..range[0].end - INIT_IMAGE[0].start])
         } else {
             None
         }
+    }
+    fn paddr_to_vaddr_range(&self, range: [Range<usize>; 1]) -> Option<[Range<usize>; 1]> {
+        self.vaddr_to_paddr_range(INIT_IMAGE)
+            .and_then(|x| if range_contains(&x, &range) { Some([range[0].start + INIT_IMAGE[0].start..range[0].end + INIT_IMAGE[0].start]) } else { None})
     }
 }
 
