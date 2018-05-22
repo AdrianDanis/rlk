@@ -84,6 +84,13 @@ pub fn init(mb: usize) {
         boot::cmdline::process(unsafe{mem::transmute(x)});
     }
     // Process memory map and initialize allocators
+    // First mark as reserved any common data
+    boot::mark_image_mem();
+    // Now mark anything additional from multiboot specifically
+
+    // Add free memory
+
+    // Enable the heap
 
     // Now that we have an allocator set the cmdline to preserve it
     if let Some(x) = mb.command_line() {

@@ -67,6 +67,7 @@ pub fn add_used_mem(range: [Range<usize>; 1]) {
     if !add_mem_region((range[0].clone(), RegionTag::USED)) {
         panic!("Failed to record used memory {:?}. Increase MAX_USED_MEM", range[0]);
     }
+    print!(Info, "Marked region [{:x}..{:x}] as initially allocated", range[0].start, range[0].end);
 }
 
 pub fn add_mem(range: [Range<usize>; 1]) {

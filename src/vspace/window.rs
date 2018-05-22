@@ -16,6 +16,8 @@ use core::mem::{align_of, size_of, transmute};
 pub unsafe trait Window {
     /// Check if a range is valid
     fn range_valid(&self, range: [Range<usize>; 1]) -> bool;
+    /// Convert a virtual address to a physical address
+    fn vaddr_to_paddr(&self, vaddr: usize) -> Option<usize>;
 }
 
 /// Declares that an object exists at this virtual address
