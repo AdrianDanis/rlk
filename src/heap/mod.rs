@@ -35,39 +35,48 @@ unsafe impl GlobalAlloc for AllocProxy {
     }
 }
 
-const MAX_USED_MEM: usize = 8;
+#[derive(Debug, Clone, Copy)]
+enum RegionTag {
+    /// Memory is used and should never be allocated
+    USED,
+    /// Memory does not fit in the initial kernel window and should be added later
+    HIGH,
+    /// Memory is used during boot but can be used after that
+    BOOT,
+}
+
+const MAX_REGIONS: usize = 8;
 const MAX_EXTRA_MEM: usize = 8;
 // TODO: build some kind of statically allocated array type out of this, but array types are
 // currently bloody annoying to try and generalize and needs const generics (see issue #44580)
-/// Regions of memory that we need to exclude from memory we are given
-static mut USED_MEM: [Option<Range<usize>>; MAX_USED_MEM] = [None, None, None, None, None, None, None, None];
-/// Regions of memory that could not be added early due to not being in the initial kernel window
-static mut EXTRA_MEM: [Option<Range<usize>>; MAX_EXTRA_MEM] = [None, None, None, None, None, None, None, None];
+static mut MEM_REGIONS: [Option<(Range<usize>, RegionTag)>; MAX_REGIONS] = [None, None, None, None, None, None, None, None];
 
-pub fn add_used_mem(range: [Range<usize>; 1]) {
+fn add_mem_region(region: (Range<usize>, RegionTag)) -> bool {
     unsafe {
-        for iter in USED_MEM.iter_mut() {
+        for iter in MEM_REGIONS.iter_mut() {
             if iter.is_none() {
-                (*iter) = Some(range[0].clone());
-                return;
+                (*iter) = Some(region);
+                return true;
             }
         }
     }
-    panic!("Failed to record used memory {:?}. Increase MAX_USED_MEM", range[0])
+    false
+}
+
+pub fn add_used_mem(range: [Range<usize>; 1]) {
+    if !add_mem_region((range[0].clone(), RegionTag::USED)) {
+        panic!("Failed to record used memory {:?}. Increase MAX_USED_MEM", range[0]);
+    }
 }
 
 pub fn add_mem(range: [Range<usize>; 1]) {
     // Check if it is valid in the window
     unsafe {
         if (!KERNEL_WINDOW.range_valid(range.clone())) {
-            for iter in EXTRA_MEM.iter_mut() {
-                if iter.is_none() {
-                    (*iter) = Some(range[0].clone());
-                    return;
-                }
+            if !add_mem_region((range[0].clone(), RegionTag::HIGH)) {
+                print!(Info, "Had to throw away memory region {:?} as it is not in kernel window and ran out of EXTRA_MEM slots. Consider increasing MAX_EXTRA_MEM", range[0]);
+                return;
             }
-            print!(Info, "Had to throw away memory region {:?} as it is not in kernel window and ran out of EXTRA_MEM slots. Consider increasing MAX_EXTRA_MEM", range[0]);
-            return;
         }
     }
     // Provide to the buddy allocator
