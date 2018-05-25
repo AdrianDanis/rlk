@@ -17,6 +17,17 @@ pub fn set(cmdline: &str) {
     }
 }
 
+/// Test a &str for some notion of being 'true'
+///
+/// Utility for testing for cmdline options that have been set to a true value
+/// matches 1, true, on and enabled as being 'true'
+pub fn option_is_true(value: &str) -> bool {
+    match (value) {
+        "1" | "ON" | "on" | "TRUE" | "true" | "ENABLED" | "enabled" => true,
+        _ => false
+    }
+}
+
 /// Process the passed cmdline calling any registered handlers. We process the one that is
 /// passed as we want to process the cmdline before we have initialized any memory
 /// allocators to setup any earlycons

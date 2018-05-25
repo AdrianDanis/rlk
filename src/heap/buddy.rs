@@ -1,9 +1,11 @@
 //! Buddy memory allocator
 
 use core::ops::Range;
-use core::cmp::min;
+use core::cmp::{min, max};
+use core::ptr::NonNull;
 use alloc::linked_list::LinkedList;
 use util::log2_usize;
+use boot::cmdline::option_is_true;
 
 struct Node {
     /// Size of the node
@@ -12,9 +14,15 @@ struct Node {
     /// in free memory so this doesn't hurt
     order: u32,
     /// Next node in the series
-    next: Option<&'static mut Node>,
+    next: Option<NonNull<Node>>,
     /// Previous node in the series
-    prev: Option<&'static mut Node>,
+    prev: Option<NonNull<Node>>,
+}
+
+impl Node {
+    fn addr(&self) -> usize {
+        self as *const Node as usize
+    }
 }
 
 /// Smallest allocation is 128 bytes
@@ -24,8 +32,27 @@ const MAX_ORDER: u32 = 30;
 
 const NUM_ORDERS: usize = MAX_ORDER as usize - MIN_ORDER as usize + 1;
 
+/// Debug flag for doing expensive assertion checking of frees
+///
+/// This can be enabled with --heap_debug_free=on cmdline option
+static mut HEAP_DEBUG_FREE: bool = false;
+
+fn heap_debug_free(debug_free: &str) {
+    if (option_is_true(debug_free)) {
+        unsafe {
+            HEAP_DEBUG_FREE = true;
+        }
+    }
+}
+
+fn heap_debug_free_enabled() -> bool {
+    unsafe {HEAP_DEBUG_FREE}
+}
+
+make_cmdline_decl!("heap_debug_free", heap_debug_free, HEAP_DEBUG_FREE);
+
 pub struct Buddy {
-    heads: [Option<Node>; NUM_ORDERS],
+    heads: [Option<NonNull<Node>>; NUM_ORDERS],
 }
 
 impl Buddy {
@@ -35,8 +62,59 @@ impl Buddy {
                         None, None, None, None]
         }
     }
+    fn insert_sorted(mut node: NonNull<Node>, head: &mut Option<NonNull<Node>>) {
+        unsafe {
+            match *head {
+                None => (),
+                Some(head_node) => {
+                    let mut current = head_node;
+                    // see if we should insert before the head
+                    if node.as_ref().addr() < current.as_ref().addr() {
+                    } else {
+                        // loop to find the node we should insert *after*
+                        // at this point we know we have a higher address than current so
+                        // we want to move next if we would still be less than current->next
+                        loop {
+                            // See if we should go to the next
+                            let next = match current.as_mut().next {
+                                None => None,
+                                Some(x) => if node.as_ref().addr() < x.as_ref().addr() { None } else { Some(x) },
+                            };
+                            // Update current or leave the loop
+                            match next {
+                                None => break,
+                                Some(x) => current = x,
+                            }
+                        }
+                        // insert after current
+                        node.as_mut().prev = Some(current);
+                        node.as_mut().next = current.as_ref().next;
+                        current.as_mut().next = Some(node);
+                        match node.as_mut().next {
+                            None => (),
+                            Some(mut x) => x.as_mut().prev = Some(current),
+                        }
+                    }
+                }
+            }
+        }
+    }
     unsafe fn free(&mut self, base: usize, len: usize) {
-        unimplemented!()
+        // Should always be size aligned
+        assert!((base % len) == 0);
+        assert!(base != 0);
+        if (heap_debug_free_enabled()) {
+            // walk all the nodes, check for any overlaps etc
+        }
+        let size = log2_usize(len);
+        if (size < MIN_ORDER || size > MAX_ORDER) {
+            panic!("Free of object with invalid size");
+        }
+        let index = size - MIN_ORDER;
+        let node = base as *mut Node;
+        *node = Node {order: size, next: None, prev: None};
+
+        Buddy::insert_sorted(NonNull::new(node).unwrap(), &mut self.heads[index as usize]);
     }
     /// Add new memory to the allocator
     ///
@@ -55,8 +133,9 @@ impl Buddy {
         wasted+=offset;
         while len > 0 {
             // determine next power of 2 size
-            let mut node_size = 1<< min(log2_usize(len), log2_usize(base));
-            if node_size > len {
+            let mut node_size = 1<< min(min(log2_usize(len), base.trailing_zeros()), MAX_ORDER);
+            if node_size > len || node_size <  1 << MIN_ORDER {
+                print!(Trace, "Throwing {} bytes at {:x}", node_size, base);
                 node_size = len;
                 wasted+=node_size;
             } else {
