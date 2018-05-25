@@ -101,6 +101,7 @@ pub fn init(mb: usize) {
     }
 
     // Enable the heap
+    heap::enable_heap();
 
     // Now that we have an allocator set the cmdline to preserve it
     if let Some(x) = mb.command_line() {

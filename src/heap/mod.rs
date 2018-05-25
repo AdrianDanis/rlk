@@ -6,6 +6,9 @@ use core::alloc::{Layout, Opaque};
 use alloc::alloc::GlobalAlloc;
 use core::ops::Range;
 use state::KERNEL_WINDOW;
+use ::ALLOCATOR;
+use util::log2_usize;
+use core::cmp::max;
 
 pub struct AllocProxy {
     alloc_fn: unsafe fn(Layout) -> *mut Opaque,
@@ -75,10 +78,37 @@ pub fn add_used_mem(range: [Range<usize>; 1]) {
 
 /// Add memory by virtual address
 pub unsafe fn add_mem(range: [Range<usize>; 1]) {
+    // TODO: at some point should probably use declare_obj instead of using range_valid
     assert!(unsafe{KERNEL_WINDOW.range_valid(range.clone())});
     // Provide to the buddy allocator
     print!(Info, "Adding usable memory region [{:x}..{:x}]", range[0].start, range[0].end);
     BUDDY.add(range[0].start, range[0].end - range[0].start);
+}
+
+unsafe fn heap_alloc(layout: Layout) -> *mut Opaque {
+    let size = max(layout.align(), layout.size());
+    match size.checked_next_power_of_two() {
+        None => panic!("No power of two size for allocation"),
+        Some(neat_size) => {
+            let value = BUDDY.alloc(log2_usize(neat_size));
+            if value.is_null() {
+                panic!("Failed to allocate {} bytes for allocation with layout {:?}", neat_size, layout);
+            }
+            value
+        }
+    }
+}
+
+unsafe fn heap_dealloc(ptr: *mut Opaque, layout: Layout) {
+    unimplemented!()
+}
+
+pub fn enable_heap() {
+    print!(Debug, "Enabling kernel heap");
+    unsafe {
+        ALLOCATOR.alloc_fn = heap_alloc;
+        ALLOCATOR.dealloc_fn = heap_dealloc;
+    }
 }
 
 /// Adds memory by physical address

@@ -47,14 +47,9 @@ pub use panic::*;
 use drivers::Serial;
 use vspace::{Window, declare_obj};
 
-struct Foo {
-    c: u8,
-    col: u8,
-}
-
 /// Allocator has to be defined in the root of the crate so we extern it here and actually declare in heap
 #[global_allocator]
-static ALLOCATOR: heap::AllocProxy = heap::AllocProxy::new();
+static mut ALLOCATOR: heap::AllocProxy = heap::AllocProxy::new();
 
 #[no_mangle]
 pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
@@ -62,12 +57,6 @@ pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
         boot::multiboot::v1::init(arg2);
     } else {
         panic!("Unknown boot style");
-    }
-    {
-        let f: &'static mut Foo;
-        f = unsafe{declare_obj(state::KERNEL_WINDOW, 0xb8000usize).unwrap()};
-        print!(Info, "using ptr");
-        unsafe{f.c = 0};
     }
     print!(Info, "arg1 is {:x}", arg1);
     print!(Panic, "Panic");

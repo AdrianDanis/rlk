@@ -3,6 +3,7 @@
 use core::ops::Range;
 use core::cmp::{min, max};
 use core::ptr::NonNull;
+use core::alloc::Opaque;
 use alloc::linked_list::LinkedList;
 use util::log2_usize;
 use boot::cmdline::option_is_true;
@@ -65,11 +66,17 @@ impl Buddy {
     fn insert_sorted(mut node: NonNull<Node>, head: &mut Option<NonNull<Node>>) {
         unsafe {
             match *head {
-                None => (),
+                None => *head = Some(node),
                 Some(head_node) => {
                     let mut current = head_node;
                     // see if we should insert before the head
                     if node.as_ref().addr() < current.as_ref().addr() {
+                        node.as_mut().next = *head;
+                        match head {
+                            None => (),
+                            Some(mut x) => x.as_mut().prev = Some(node),
+                        };
+                        *head = Some(node);
                     } else {
                         // loop to find the node we should insert *after*
                         // at this point we know we have a higher address than current so
@@ -99,12 +106,57 @@ impl Buddy {
             }
         }
     }
+    fn fill_level(&mut self, bits: u32) {
+        assert!(self.heads[bits as usize].is_none());
+        if bits == MAX_ORDER {
+            // no way to get more of these unless some get freed
+            return;
+        }
+        // alloc from a higher level
+        let node = self.alloc(bits + 1);
+        // see if we got something
+        if !node.is_null() {
+            // insert it in two pieces using insert_sorted instead of free to make sure we don't immediately
+            // coalesce it back up
+            let nodea = node as *mut Node;
+            let nodeb = (node as usize + 1 << bits) as *mut Node;
+            unsafe {
+                *nodea = Node {order: bits, next: None, prev: None};
+                *nodeb = Node {order: bits, next: None, prev: None};
+            }
+            Buddy::insert_sorted(NonNull::new(nodeb).unwrap(), &mut self.heads[bits as usize]);
+            Buddy::insert_sorted(NonNull::new(nodea).unwrap(), &mut self.heads[bits as usize]);
+        }
+    }
+    pub fn alloc(&mut self, mut bits: u32) -> *mut Opaque {
+        if bits < MIN_ORDER {
+            bits = MIN_ORDER;
+        }
+        if bits > MAX_ORDER {
+            panic!("Requested allocation for {} bits, larger than maximum {} bits");
+        }
+        // see if we need to fill the layer
+        if self.heads[bits as usize].is_none() {
+            print!(Trace, "Refilling level {} before allocation", bits);
+            self.fill_level(bits);
+        }
+        match self.heads[bits as usize] {
+            None => 0 as *mut Opaque,
+            Some(node) => {
+                unsafe {
+                    self.heads[bits as usize] = node.as_ref().next;
+                    node.as_ref().addr() as *mut Opaque
+                }
+            },
+        }
+    }
     unsafe fn free(&mut self, base: usize, len: usize) {
         // Should always be size aligned
         assert!((base % len) == 0);
         assert!(base != 0);
         if (heap_debug_free_enabled()) {
             // walk all the nodes, check for any overlaps etc
+            // TODO
         }
         let size = log2_usize(len);
         if (size < MIN_ORDER || size > MAX_ORDER) {
@@ -115,6 +167,8 @@ impl Buddy {
         *node = Node {order: size, next: None, prev: None};
 
         Buddy::insert_sorted(NonNull::new(node).unwrap(), &mut self.heads[index as usize]);
+        // see if node can be combined
+        // TODO
     }
     /// Add new memory to the allocator
     ///
