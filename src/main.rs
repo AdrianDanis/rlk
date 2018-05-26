@@ -41,6 +41,7 @@ mod drivers;
 mod vspace;
 mod heap;
 mod state;
+mod ip_collections;
 
 pub use panic::*;
 
