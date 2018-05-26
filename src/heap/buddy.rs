@@ -4,26 +4,24 @@ use core::ops::Range;
 use core::cmp::{min, max};
 use core::ptr::NonNull;
 use core::alloc::Opaque;
-use alloc::linked_list::LinkedList;
+use core::slice;
 use util::log2_usize;
 use boot::cmdline::option_is_true;
+use ip_collections::LinkedList;
 
+//TODO: stop using base+len everywhere and start using slices of [u8]
+
+#[derive(Debug, Clone)]
 struct Node {
+    /// Address
+    ///
+    /// Record the address of the node in the node so that we can perform our desired ordering
+    addr: usize,
     /// Size of the node
     ///
     /// We knew the order of the node when we found it in a list, but we're storing
     /// in free memory so this doesn't hurt
     order: u32,
-    /// Next node in the series
-    next: Option<NonNull<Node>>,
-    /// Previous node in the series
-    prev: Option<NonNull<Node>>,
-}
-
-impl Node {
-    fn addr(&self) -> usize {
-        self as *const Node as usize
-    }
 }
 
 /// Smallest allocation is 128 bytes
@@ -53,79 +51,40 @@ fn heap_debug_free_enabled() -> bool {
 make_cmdline_decl!("heap_debug_free", heap_debug_free, HEAP_DEBUG_FREE);
 
 pub struct Buddy {
-    heads: [Option<NonNull<Node>>; NUM_ORDERS],
+    pools: [LinkedList<Node>; NUM_ORDERS],
 }
 
 impl Buddy {
     pub const fn new() -> Buddy {
-        Buddy { heads: [None, None, None, None, None, None, None, None, None, None,
-                        None, None, None, None, None, None, None, None, None, None,
-                        None, None, None, None]
-        }
-    }
-    fn insert_sorted(mut node: NonNull<Node>, head: &mut Option<NonNull<Node>>) {
-        unsafe {
-            match *head {
-                None => *head = Some(node),
-                Some(head_node) => {
-                    let mut current = head_node;
-                    // see if we should insert before the head
-                    if node.as_ref().addr() < current.as_ref().addr() {
-                        node.as_mut().next = *head;
-                        match head {
-                            None => (),
-                            Some(mut x) => x.as_mut().prev = Some(node),
-                        };
-                        *head = Some(node);
-                    } else {
-                        // loop to find the node we should insert *after*
-                        // at this point we know we have a higher address than current so
-                        // we want to move next if we would still be less than current->next
-                        loop {
-                            // See if we should go to the next
-                            let next = match current.as_mut().next {
-                                None => None,
-                                Some(x) => if node.as_ref().addr() < x.as_ref().addr() { None } else { Some(x) },
-                            };
-                            // Update current or leave the loop
-                            match next {
-                                None => break,
-                                Some(x) => current = x,
-                            }
-                        }
-                        // insert after current
-                        node.as_mut().prev = Some(current);
-                        node.as_mut().next = current.as_ref().next;
-                        current.as_mut().next = Some(node);
-                        match node.as_mut().next {
-                            None => (),
-                            Some(mut x) => x.as_mut().prev = Some(current),
-                        }
-                    }
-                }
-            }
+        Buddy { pools: [LinkedList::new(), LinkedList::new(), LinkedList::new(), LinkedList::new(), LinkedList::new(), LinkedList::new(), LinkedList::new(), LinkedList::new(), LinkedList::new(), LinkedList::new(),
+                        LinkedList::new(), LinkedList::new(), LinkedList::new(), LinkedList::new(), LinkedList::new(), LinkedList::new(), LinkedList::new(), LinkedList::new(), LinkedList::new(), LinkedList::new(),
+                        LinkedList::new(), LinkedList::new(), LinkedList::new(), LinkedList::new()]
         }
     }
     fn fill_level(&mut self, bits: u32) {
-        assert!(self.heads[bits as usize].is_none());
+        assert!(bits >= MIN_ORDER);
+        let index = (bits - MIN_ORDER) as usize;
+        assert!(self.pools[index].is_empty());
         if bits == MAX_ORDER {
             // no way to get more of these unless some get freed
             return;
         }
         // alloc from a higher level
+        // TODO: have a wrapping alloc that returns a (slice,node) so we do less nonsense in here
         let node = self.alloc(bits + 1);
         // see if we got something
         if !node.is_null() {
-            // insert it in two pieces using insert_sorted instead of free to make sure we don't immediately
-            // coalesce it back up
-            let nodea = node as *mut Node;
-            let nodeb = (node as usize + 1 << bits) as *mut Node;
+            // insert it in two pieces. don't use free to make sure we don't immediately coalesce it back up
+            let addr_a = node as usize;
+            let addr_b = addr_a + (1 << bits);
+            let node_a = Node {addr: addr_a, order: bits};
+            let node_b = Node {addr: addr_b, order: bits};
             unsafe {
-                *nodea = Node {order: bits, next: None, prev: None};
-                *nodeb = Node {order: bits, next: None, prev: None};
+                let slice_a = slice::from_raw_parts_mut(addr_a as *mut u8, 1 << bits);
+                let slice_b = slice::from_raw_parts_mut(addr_b as *mut u8, 1 << bits);
+                self.pools[index].insert((slice_b, node_b));
+                self.pools[index].insert((slice_a, node_a));
             }
-            Buddy::insert_sorted(NonNull::new(nodeb).unwrap(), &mut self.heads[bits as usize]);
-            Buddy::insert_sorted(NonNull::new(nodea).unwrap(), &mut self.heads[bits as usize]);
         }
     }
     pub fn alloc(&mut self, mut bits: u32) -> *mut Opaque {
@@ -135,18 +94,18 @@ impl Buddy {
         if bits > MAX_ORDER {
             panic!("Requested allocation for {} bits, larger than maximum {} bits");
         }
+        let index = (bits - MIN_ORDER) as usize;
         // see if we need to fill the layer
-        if self.heads[bits as usize].is_none() {
+        if self.pools[index].is_empty() {
             print!(Trace, "Refilling level {} before allocation", bits);
             self.fill_level(bits);
         }
-        match self.heads[bits as usize] {
+        match self.pools[index].pop_front() {
             None => 0 as *mut Opaque,
-            Some(node) => {
-                unsafe {
-                    self.heads[bits as usize] = node.as_ref().next;
-                    node.as_ref().addr() as *mut Opaque
-                }
+            Some((slice, node)) => {
+                assert!(node.addr == slice.as_ptr() as usize);
+                assert!(node.order == bits);
+                slice.as_mut_ptr() as *mut Opaque
             },
         }
     }
@@ -162,13 +121,25 @@ impl Buddy {
         if (size < MIN_ORDER || size > MAX_ORDER) {
             panic!("Free of object with invalid size");
         }
-        let index = size - MIN_ORDER;
-        let node = base as *mut Node;
-        *node = Node {order: size, next: None, prev: None};
-
-        Buddy::insert_sorted(NonNull::new(node).unwrap(), &mut self.heads[index as usize]);
-        // see if node can be combined
-        // TODO
+        let index = (size - MIN_ORDER) as usize;
+        if size != MAX_ORDER {
+            // see if we would be node a or node b from a split node by checking our alignment
+            let other_base =
+                if (base as *const u8).align_offset(len * 2) == 0 {
+                    // As we are aligned to the next higher size, we are node a and want b
+                    base + len
+                } else {
+                    // We are not aligned, so we are b
+                    base - len
+                };
+            if let Some((slice, node)) = self.pools[index].remove(Node {addr: other_base, order: size}) {
+                // Insert the larger node instead
+                return self.free(min(slice.as_ptr() as usize, base), len * 2);
+            }
+        }
+        let node = Node {addr: base, order: size};
+        let slice = slice::from_raw_parts_mut(base as *mut u8, len);
+        self.pools[index].insert((slice, node));
     }
     /// Add new memory to the allocator
     ///
@@ -177,6 +148,7 @@ impl Buddy {
     /// # Safety
     ///
     /// Provided virtual address range must not be used by any existing object or already provided to the allocator
+    // TODO: pass in a [u8] that could be created from declare_obj instead of inventing memory
     pub unsafe fn add(&mut self, mut base: usize, mut len: usize) {
         // track how much memor we waste due to alignment
         let mut wasted: usize = 0;

@@ -4,6 +4,7 @@
 /// existing memory locations, instead of creating/allocating new objects
 
 use core::ptr::NonNull;
+use core::slice;
 use core::mem::{size_of, align_of};
 
 /// Generic node for in place data structures
@@ -38,4 +39,13 @@ impl<U, C> Node<U, C> {
     }
 }
 
+impl<U: Clone, C> Node<U, C> {
+    pub unsafe fn as_item(&mut self) -> Item<U> {
+        let v = self.user.clone();
+        (slice::from_raw_parts_mut(self as *mut Self as *mut u8, self.size), v)
+    }
+}
+
 mod linkedlist;
+
+pub use self::linkedlist::LinkedList;

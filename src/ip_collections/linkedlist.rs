@@ -44,6 +44,12 @@ impl<T> LinkedList<T> {
             it.as_mut().as_mut().prev = Some(node);
         }
     }
+    unsafe fn set_prev(mut node: NonNull<LLNode<T>>, mut prev: Option<NonNull<LLNode<T>>>) {
+        node.as_mut().as_mut().prev = prev;
+        for it in prev.iter_mut() {
+            it.as_mut().as_mut().next = Some(node);
+        }
+    }
     pub unsafe fn push_front(&mut self, item: Item<T>) {
         // Build a node and get a reference to it
         let node = LLNode::<T>::new(item.0, item.1, LLData::<T>::default());
@@ -51,16 +57,29 @@ impl<T> LinkedList<T> {
         self.head = Some(node);
     }
     pub fn remove(&mut self, value: T) -> Option<Item<T>> {
-        unimplemented!()
+        None
+//        unimplemented!()
     }
     pub unsafe fn insert(&mut self, item: Item<T>) {
-        unimplemented!()
-    }
-    pub fn pop_front(&mut self) -> Option<Item<T>> {
-        unimplemented!()
+        self.push_front(item);
+//        unimplemented!()
     }
     pub fn is_empty(&self) -> bool {
         self.head.is_none()
     }
 }
 
+impl<T: Clone> LinkedList<T> {
+    pub fn pop_front(&mut self) -> Option<Item<T>> {
+        match self.head {
+            None => None,
+            Some(mut node) => {
+                unsafe {
+                    Self::set_prev(node, None);
+                    self.head = node.as_mut().as_mut().next;
+                    Some(node.as_mut().as_item())
+                }
+            },
+        }
+    }
+}
