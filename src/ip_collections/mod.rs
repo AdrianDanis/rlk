@@ -34,6 +34,9 @@ impl<U, C> Node<U, C> {
         *node = Self { user:user, collection:collection, size:mem.len() };
         NonNull::new(node).unwrap()
     }
+    pub fn user_as_ref(&self) -> &U {
+        &self.user
+    }
     pub fn as_mut(&mut self) -> &mut C {
         &mut self.collection
     }

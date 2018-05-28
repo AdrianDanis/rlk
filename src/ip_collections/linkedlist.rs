@@ -28,6 +28,7 @@ impl<T> Default for LinkedList<T> {
     }
 }
 
+// TOOD: rethink unsafe through this and parent mod interface
 impl<T> LinkedList<T> {
     pub const fn new() -> Self {
         Self { head: None }
@@ -56,16 +57,85 @@ impl<T> LinkedList<T> {
         Self::set_next(node, self.head);
         self.head = Some(node);
     }
-    pub fn remove(&mut self, value: T) -> Option<Item<T>> {
-        None
-//        unimplemented!()
-    }
-    pub unsafe fn insert(&mut self, item: Item<T>) {
-        self.push_front(item);
-//        unimplemented!()
-    }
     pub fn is_empty(&self) -> bool {
         self.head.is_none()
+    }
+    pub unsafe fn push_back(&mut self, item: Item<T>) {
+        match self.head {
+            None => self.push_front(item),
+            Some(x) => {
+                let mut node: NonNull<LLNode<T>> = x;
+                loop {
+                    match node.as_mut().as_mut().next {
+                        None => break,
+                        Some(n) => node = n,
+                    }
+                }
+                let new_node = LLNode::<T>::new(item.0, item.1, LLData::<T>::default());
+                Self::set_next(node, Some(new_node));
+            },
+        }
+    }
+    unsafe fn unlink_node(&mut self, mut node: NonNull<LLNode<T>>) {
+        if let Some(prev) = node.as_mut().as_mut().prev {
+            Self::set_next(prev, node.as_mut().as_mut().next)
+        } else {
+            // we are removing the head
+            self.head = node.as_mut().as_mut().next;
+        }
+        if let Some(next) = node.as_mut().as_mut().next {
+            Self::set_prev(next, node.as_mut().as_mut().prev)
+        }
+    }
+}
+
+impl<T: Clone + PartialEq> LinkedList<T> {
+    pub unsafe fn remove(&mut self, value: T) -> Option<Item<T>> {
+        if let Some(x) = self.head {
+            let mut current = x;
+            loop {
+                if *current.as_mut().user_as_ref() == value {
+                    self.unlink_node(current);
+                    return Some(current.as_mut().as_item());
+                }
+                match current.as_mut().as_mut().next {
+                    None => break,
+                    Some(x) => current = x,
+                }
+            }
+        }
+        None
+    }
+}
+
+impl<T: Clone + PartialOrd> LinkedList<T> {
+    pub unsafe fn insert(&mut self, item: Item<T>) {
+        let mut temp = Self::new();
+        loop {
+            match self.pop_front() {
+                None => break,
+                Some((slice, data)) => {
+                    // See if we need to go beyond this element or not
+                    if item.1 < data {
+                        temp.push_back((slice, data));
+                    } else {
+                        self.push_front((slice, data));
+                        break;
+                    }
+                },
+            }
+        }
+        // now put our item in
+        self.push_front(item);
+        // put everything else back in. as we pushed back when inserting
+        // we pop_front->push_front and end up with everything in the
+        // original order
+        loop {
+            match temp.pop_front() {
+                None => break,
+                Some(item) => self.push_front(item),
+            }
+        }
     }
 }
 
@@ -75,8 +145,7 @@ impl<T: Clone> LinkedList<T> {
             None => None,
             Some(mut node) => {
                 unsafe {
-                    Self::set_prev(node, None);
-                    self.head = node.as_mut().as_mut().next;
+                    self.unlink_node(node);
                     Some(node.as_mut().as_item())
                 }
             },

@@ -1,7 +1,7 @@
 //! Buddy memory allocator
 
 use core::ops::Range;
-use core::cmp::{min, max};
+use core::cmp::{min, max, Ordering};
 use core::ptr::NonNull;
 use core::alloc::Opaque;
 use core::slice;
@@ -11,7 +11,7 @@ use ip_collections::LinkedList;
 
 //TODO: stop using base+len everywhere and start using slices of [u8]
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, PartialEq)]
 struct Node {
     /// Address
     ///
@@ -22,6 +22,13 @@ struct Node {
     /// We knew the order of the node when we found it in a list, but we're storing
     /// in free memory so this doesn't hurt
     order: u32,
+}
+
+impl PartialOrd for Node {
+    fn partial_cmp(&self, rhs: &Self) -> Option<Ordering> {
+        // Only performing ordering by the address, we do not care about the size
+        self.addr.partial_cmp(&rhs.addr)
+    }
 }
 
 /// Smallest allocation is 128 bytes
