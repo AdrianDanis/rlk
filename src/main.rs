@@ -27,30 +27,27 @@ extern crate bitflags;
 extern crate bitfield;
 #[macro_use]
 extern crate alloc;
-//extern crate compiler_builtins;
 
 #[macro_use]
-mod decls;
+pub mod decls;
 #[macro_use]
-mod con;
+pub mod con;
 
-mod boot;
-mod panic;
-mod util;
-mod drivers;
-mod vspace;
-mod heap;
-mod state;
-mod ip_collections;
-
-pub use panic::*;
+pub mod boot;
+pub mod panic;
+pub mod util;
+pub mod drivers;
+pub mod vspace;
+pub mod heap;
+pub mod state;
+pub mod ip_collections;
 
 use drivers::Serial;
 use vspace::{Window, declare_obj};
 
 /// Allocator has to be defined in the root of the crate so we extern it here and actually declare in heap
 #[global_allocator]
-static mut ALLOCATOR: heap::AllocProxy = heap::AllocProxy::new();
+pub static mut ALLOCATOR: heap::AllocProxy = heap::AllocProxy::new();
 
 #[no_mangle]
 pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
