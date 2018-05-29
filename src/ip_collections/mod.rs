@@ -1,11 +1,11 @@
-/// 'In Place' collections library
-///
-/// 'In Place' collections are datastructures based around forming data structures through
-/// existing memory locations, instead of creating/allocating new objects
+//! 'In Place' collections library
+//!
+//! 'In Place' collections are datastructures based around forming data structures through
+//! existing memory locations, instead of creating/allocating new objects
 
 use core::ptr::NonNull;
 use core::slice;
-use core::mem::{size_of, align_of};
+use core::mem::{size_of, align_of, transmute};
 
 /// Generic node for in place data structures
 ///
@@ -18,10 +18,14 @@ struct Node<U, C> {
     size: usize,
 }
 
+/// Common type used by functions for adding and removing items to in place data structures
 type Item<U> = (&'static mut[u8], U);
 
 impl<U, C> Node<U, C> {
-    fn check_mem(&self, mem: &[u8]) {
+    /// Checks that a slice is valid for using as a node
+    ///
+    /// Panics if the provided memory is not correct
+    fn check_mem(mem: &[u8]) {
         if mem.len() < size_of::<Self>() {
             panic!("Insufficient memory to construct node");
         }
@@ -29,23 +33,34 @@ impl<U, C> Node<U, C> {
             panic!("Provided memory is not correctly aligned");
         }
     }
-    pub unsafe fn new(mem: &'static mut [u8], user: U, collection: C) -> NonNull<Node<U, C>> {
+    /// Consume a slice of memory and produce a reference to a node
+    ///
+    /// This presents a safe interface as the provided slice is a mutable static and consumed
+    ///
+    /// # Panics
+    ///
+    /// The provided memory must have a sufficient size and alignment otherwise a panic is generated
+    pub fn new(mem: &'static mut [u8], user: U, collection: C) -> NonNull<Node<U, C>> {
+        Self::check_mem(mem);
         let node = mem.as_mut_ptr() as *mut Node<U, C>;
-        *node = Self { user:user, collection:collection, size:mem.len() };
+        unsafe {*node = Self { user:user, collection:collection, size:mem.len() }};
         NonNull::new(node).unwrap()
     }
+    /// Retrieve a reference to the user data contained in the node
     pub fn user_as_ref(&self) -> &U {
         &self.user
     }
+    /// Retrieve a mutable reference to the collection data contained in the node
     pub fn as_mut(&mut self) -> &mut C {
         &mut self.collection
     }
 }
 
 impl<U: Clone, C> Node<U, C> {
-    pub unsafe fn as_item(&mut self) -> Item<U> {
+    /// Consume a node and retrieve the contained data and original slice
+    pub fn as_item(&mut self) -> Item<U> {
         let v = self.user.clone();
-        (slice::from_raw_parts_mut(self as *mut Self as *mut u8, self.size), v)
+        unsafe {(slice::from_raw_parts_mut(self as *mut Self as *mut u8, self.size), v)}
     }
 }
 

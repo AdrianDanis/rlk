@@ -1,4 +1,4 @@
-/// LinkedList that creates links through provided memory
+//! LinkedList that creates links through provided memory
 
 use core::ptr::NonNull;
 use core::mem::{size_of,align_of};
