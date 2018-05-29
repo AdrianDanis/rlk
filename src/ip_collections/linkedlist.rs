@@ -20,18 +20,19 @@ impl<T> Default for LLData<T> {
 
 pub struct LinkedList<T> {
     head: Option<NonNull<LLNode<T>>>,
+    tail: Option<NonNull<LLNode<T>>>,
 }
 
 impl<T> Default for LinkedList<T> {
     fn default() -> Self {
-        Self { head: None }
+        Self { head: None, tail: None }
     }
 }
 
 // TOOD: rethink unsafe through this and parent mod interface
 impl<T> LinkedList<T> {
     pub const fn new() -> Self {
-        Self { head: None }
+        Self { head: None, tail: None }
     }
     pub const fn size_of_node(&self) -> usize {
         size_of::<LLNode<T>>()
@@ -52,39 +53,37 @@ impl<T> LinkedList<T> {
         }
     }
     pub unsafe fn push_front(&mut self, item: Item<T>) {
-        // Build a node and get a reference to it
-        let node = LLNode::<T>::new(item.0, item.1, LLData::<T>::default());
-        Self::set_next(node, self.head);
+        let data = LLData { prev: None, next: self.head };
+        let node = LLNode::<T>::new(item.0, item.1, data);
+        match self.head {
+            None => self.tail = Some(node),
+            Some(mut head) => head.as_mut().as_mut().prev = Some(node),
+        }
         self.head = Some(node);
+    }
+    pub unsafe fn push_back(&mut self, item: Item<T>) {
+        let data = LLData { prev: self.tail, next: None };
+        let node = LLNode::<T>::new(item.0, item.1, data);
+        match self.tail {
+            None => self.head = Some(node),
+            Some(mut tail) => tail.as_mut().as_mut().next = Some(node),
+        }
+        self.tail = Some(node);
     }
     pub fn is_empty(&self) -> bool {
         self.head.is_none()
     }
-    pub unsafe fn push_back(&mut self, item: Item<T>) {
-        match self.head {
-            None => self.push_front(item),
-            Some(x) => {
-                let mut node: NonNull<LLNode<T>> = x;
-                loop {
-                    match node.as_mut().as_mut().next {
-                        None => break,
-                        Some(n) => node = n,
-                    }
-                }
-                let new_node = LLNode::<T>::new(item.0, item.1, LLData::<T>::default());
-                Self::set_next(node, Some(new_node));
-            },
-        }
-    }
     unsafe fn unlink_node(&mut self, mut node: NonNull<LLNode<T>>) {
-        if let Some(prev) = node.as_mut().as_mut().prev {
-            Self::set_next(prev, node.as_mut().as_mut().next)
-        } else {
-            // we are removing the head
-            self.head = node.as_mut().as_mut().next;
+        let node = node.as_mut().as_mut();
+
+        match node.prev {
+            None => self.head = node.next,
+            Some(mut prev) => prev.as_mut().as_mut().next = node.next,
         }
-        if let Some(next) = node.as_mut().as_mut().next {
-            Self::set_prev(next, node.as_mut().as_mut().prev)
+
+        match node.next {
+            None => self.tail = node.prev,
+            Some(mut next) => next.as_mut().as_mut().prev = node.prev,
         }
     }
 }
