@@ -7,6 +7,15 @@ use super::{Node, Item};
 
 type LLNode<T> = Node<T, LLData<T>>;
 
+/// Doubly linked list through provided memory
+///
+/// Compared to a normal `LinkedList` this supports removal and insertion into the middle of
+/// the list.
+pub struct LinkedList<T> {
+    head: Option<NonNull<LLNode<T>>>,
+    tail: Option<NonNull<LLNode<T>>>,
+}
+
 struct LLData<T> {
     next: Option<NonNull<LLNode<T>>>,
     prev: Option<NonNull<LLNode<T>>>,
@@ -18,61 +27,60 @@ impl<T> Default for LLData<T> {
     }
 }
 
-pub struct LinkedList<T> {
-    head: Option<NonNull<LLNode<T>>>,
-    tail: Option<NonNull<LLNode<T>>>,
-}
-
 impl<T> Default for LinkedList<T> {
     fn default() -> Self {
         Self { head: None, tail: None }
     }
 }
 
-// TOOD: rethink unsafe through this and parent mod interface
 impl<T> LinkedList<T> {
+    /// Creates an empty `LinkedList<T>`
     pub const fn new() -> Self {
         Self { head: None, tail: None }
     }
+    /// Minimum size of memory that can be inserted into the `LinkedList`
     pub const fn size_of_node(&self) -> usize {
         size_of::<LLNode<T>>()
     }
+    /// Minimum alignment of memory that can be inserted into the `LinkedList`
     pub const fn align_of_node(&self) -> usize {
         align_of::<LLNode<T>>()
     }
-    unsafe fn set_next(mut node: NonNull<LLNode<T>>, mut next: Option<NonNull<LLNode<T>>>) {
-        node.as_mut().as_mut().next = next;
-        for it in next.iter_mut() {
-            it.as_mut().as_mut().prev = Some(node);
+    /// Push an item to the front of the list
+    ///
+    /// The provided `Item` is consumed and must respect `size_of_node` and `align_of_node`
+    pub fn push_front(&mut self, item: Item<T>) {
+        unsafe {
+            let data = LLData { prev: None, next: self.head };
+            let node = LLNode::<T>::new(item.0, item.1, data);
+            match self.head {
+                None => self.tail = Some(node),
+                Some(mut head) => head.as_mut().as_mut().prev = Some(node),
+            }
+            self.head = Some(node);
         }
     }
-    unsafe fn set_prev(mut node: NonNull<LLNode<T>>, mut prev: Option<NonNull<LLNode<T>>>) {
-        node.as_mut().as_mut().prev = prev;
-        for it in prev.iter_mut() {
-            it.as_mut().as_mut().next = Some(node);
+    /// Push an item to the back of the list
+    ///
+    /// The provided `Item` is consumed and must respect `size_of_node` and `align_if_node`
+    pub fn push_back(&mut self, item: Item<T>) {
+        unsafe {
+            let data = LLData { prev: self.tail, next: None };
+            let node = LLNode::<T>::new(item.0, item.1, data);
+            match self.tail {
+                None => self.head = Some(node),
+                Some(mut tail) => tail.as_mut().as_mut().next = Some(node),
+            }
+            self.tail = Some(node);
         }
     }
-    pub unsafe fn push_front(&mut self, item: Item<T>) {
-        let data = LLData { prev: None, next: self.head };
-        let node = LLNode::<T>::new(item.0, item.1, data);
-        match self.head {
-            None => self.tail = Some(node),
-            Some(mut head) => head.as_mut().as_mut().prev = Some(node),
-        }
-        self.head = Some(node);
-    }
-    pub unsafe fn push_back(&mut self, item: Item<T>) {
-        let data = LLData { prev: self.tail, next: None };
-        let node = LLNode::<T>::new(item.0, item.1, data);
-        match self.tail {
-            None => self.head = Some(node),
-            Some(mut tail) => tail.as_mut().as_mut().next = Some(node),
-        }
-        self.tail = Some(node);
-    }
+    /// Returns whether the `LinkedList` is empty or not
     pub fn is_empty(&self) -> bool {
         self.head.is_none()
     }
+}
+
+impl<T> LinkedList<T> {
     unsafe fn unlink_node(&mut self, mut node: NonNull<LLNode<T>>) {
         let node = node.as_mut().as_mut();
 
@@ -89,26 +97,39 @@ impl<T> LinkedList<T> {
 }
 
 impl<T: Clone + PartialEq> LinkedList<T> {
-    pub unsafe fn remove(&mut self, value: T) -> Option<Item<T>> {
-        if let Some(x) = self.head {
-            let mut current = x;
-            loop {
-                if *current.as_mut().user_as_ref() == value {
-                    self.unlink_node(current);
-                    return Some(current.as_mut().as_item());
-                }
-                match current.as_mut().as_mut().next {
-                    None => break,
-                    Some(x) => current = x,
+    /// Search for a node in the `LinkedList` and remove it if found
+    ///
+    /// The node is searched for by comparing against the provided sample user data
+    pub fn remove(&mut self, value: T) -> Option<Item<T>> {
+        unsafe {
+            if let Some(x) = self.head {
+                let mut current = x;
+                loop {
+                    if *current.as_mut().user_as_ref() == value {
+                        self.unlink_node(current);
+                        return Some(current.as_mut().as_item());
+                    }
+                    match current.as_mut().as_mut().next {
+                        None => break,
+                        Some(x) => current = x,
+                    }
                 }
             }
+            None
         }
-        None
     }
 }
 
 impl<T: Clone + PartialOrd> LinkedList<T> {
-    pub unsafe fn insert(&mut self, item: Item<T>) {
+    /// Insert a new item into a sorted `LinkedList`
+    ///
+    /// The provided `Item` is inserted before the first element found, by walking from the head,
+    /// that compares as greater than the provided `Item`. Using `insert` only makes sense if
+    /// `insert` is used to insert all the nodes into the `LinkedList` or you otherwise know that
+    /// the list is sorted.
+    ///
+    /// The provided `Item` is consumed and must respect `size_of_node` and `align_of_node`
+    pub fn insert(&mut self, item: Item<T>) {
         let mut temp = Self::new();
         loop {
             match self.pop_front() {
@@ -139,6 +160,9 @@ impl<T: Clone + PartialOrd> LinkedList<T> {
 }
 
 impl<T: Clone> LinkedList<T> {
+    /// Remove the front node in the `LinkedList` and return it
+    ///
+    /// Returns `None` if the `LinkedList` is empty
     pub fn pop_front(&mut self) -> Option<Item<T>> {
         match self.head {
             None => None,
