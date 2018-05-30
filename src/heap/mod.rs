@@ -94,8 +94,7 @@ pub fn add_mem_owned(mem: &'static mut [u8]) {
     let start = mem.as_ptr() as usize;
     let end = start + mem.len();
     print!(Info, "Adding usable memory region {:x}", display);
-    // TODO: buddy should take mem
-    unsafe {BUDDY.add(start, end - start)}
+    unsafe {BUDDY.add(mem)}
 }
 
 /// Add a virtual address range of memory to the heap
@@ -145,14 +144,12 @@ pub fn enable_heap() {
 /// This is a more general version of `add_mem` and allows for adding memory that is not yet
 /// available to describe virtually
 pub unsafe fn add_mem_physical(range: [Range<usize>; 1]) {
-    unsafe {
-        if let Some(vaddr) = KERNEL_WINDOW.paddr_to_vaddr_range(range.clone()) {
-            add_mem(vaddr)
-        } else {
-            if !add_mem_region(StoredMemRegion::HIGH(range[0].clone())) {
-                print!(Info, "Had to throw away memory region {:?} as it is not in kernel window and ran out of EXTRA_MEM slots. Consider increasing MAX_EXTRA_MEM", range[0]);
-                return;
-            }
+    if let Some(vaddr) = KERNEL_WINDOW.paddr_to_vaddr_range(range.clone()) {
+        add_mem(vaddr)
+    } else {
+        if !add_mem_region(StoredMemRegion::HIGH(range[0].clone())) {
+            print!(Info, "Had to throw away memory region {:?} as it is not in kernel window and ran out of EXTRA_MEM slots. Consider increasing MAX_EXTRA_MEM", range[0]);
+            return;
         }
     }
 }

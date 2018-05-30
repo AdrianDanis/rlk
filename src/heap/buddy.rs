@@ -116,15 +116,17 @@ impl Buddy {
             },
         }
     }
-    unsafe fn free(&mut self, base: usize, len: usize) {
+    fn free(&mut self, mem: &'static mut[u8]) {
+        let base = mem.as_ptr() as usize;
+        let len = mem.len();
         // Should always be size aligned
-        assert!((base % len) == 0);
+        assert!((len % len) == 0);
         assert!(base != 0);
         if (heap_debug_free_enabled()) {
             // walk all the nodes, check for any overlaps etc
             // TODO
         }
-        let size = log2_usize(len);
+        let size = log2_usize(mem.len());
         if (size < MIN_ORDER || size > MAX_ORDER) {
             panic!("Free of object with invalid size");
         }
@@ -141,22 +143,20 @@ impl Buddy {
                 };
             if let Some((slice, node)) = self.pools[index].remove(Node {addr: other_base, order: size}) {
                 // Insert the larger node instead
-                return self.free(min(slice.as_ptr() as usize, base), len * 2);
+                return self.free(unsafe{slice::from_raw_parts_mut(min(slice.as_ptr() as usize, base) as *mut u8, len * 2)});
             }
         }
         let node = Node {addr: base, order: size};
-        let slice = slice::from_raw_parts_mut(base as *mut u8, len);
+        let slice = unsafe{slice::from_raw_parts_mut(base as *mut u8, len)};
         self.pools[index].insert((slice, node));
     }
     /// Add new memory to the allocator
     ///
     /// Memory has no requirements on size or alignment and will be split into multiple pieces as required
     ///
-    /// # Safety
-    ///
-    /// Provided virtual address range must not be used by any existing object or already provided to the allocator
-    // TODO: pass in a [u8] that could be created from declare_obj instead of inventing memory
-    pub unsafe fn add(&mut self, mut base: usize, mut len: usize) {
+    pub fn add(&mut self, mut mem: &'static mut [u8]) {
+        let mut base = mem.as_ptr() as usize;
+        let mut len = mem.len();
         // track how much memor we waste due to alignment
         let mut wasted: usize = 0;
         // convert base into a correctly aligned pointer of our MIN_ORDER
@@ -172,7 +172,7 @@ impl Buddy {
                 node_size = len;
                 wasted+=node_size;
             } else {
-                self.free(base, node_size);
+                self.free(unsafe{slice::from_raw_parts_mut(base as *mut u8, node_size)});
             }
             base += node_size;
             len -= node_size;
