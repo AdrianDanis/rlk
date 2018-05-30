@@ -12,6 +12,7 @@
 
 use core::ops::Range;
 use core::mem::{align_of, size_of, transmute};
+use core::slice;
 
 // TODO: paddr and vaddr types?
 /// Generic trait for a view (aka Window) that is a virtual address spaces
@@ -61,6 +62,14 @@ pub unsafe trait Window {
 pub unsafe fn declare_obj<'a, T>(window: &'a Window, base_vaddr: usize) -> Option<&'static mut T> {
     if (base_vaddr % align_of::<T>()) == 0 && window.range_valid([base_vaddr..base_vaddr + size_of::<T>()]) {
         Some(transmute(base_vaddr as *mut T))
+    } else {
+        None
+    }
+}
+
+pub unsafe fn declare_slice<'a, T>(window: &'a Window, base_vaddr: usize, items: usize) -> Option<&'static mut [T]> {
+    if (base_vaddr % align_of::<T>()) == 0 && window.range_valid([base_vaddr..base_vaddr + size_of::<T>() * items]) {
+        Some(slice::from_raw_parts_mut(base_vaddr as *mut T, items))
     } else {
         None
     }

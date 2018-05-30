@@ -5,6 +5,7 @@ mod buddy;
 use core::alloc::{Layout, Opaque};
 use alloc::alloc::GlobalAlloc;
 use core::ops::Range;
+use core::slice;
 use state::KERNEL_WINDOW;
 use ::ALLOCATOR;
 use util::log2_usize;
@@ -38,14 +39,14 @@ unsafe impl GlobalAlloc for AllocProxy {
     }
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug)]
 enum StoredMemRegion {
-    /// Memory is used and should never be allocated, stored as virtual address
-    USED(Range<usize>),
+    /// Memory is used and we have been given ownership of it
+    USED(&'static mut [u8]),
     /// Memory does not fit in the initial kernel window and should be added later, stored by physical address
     HIGH(Range<usize>),
-    /// Memory is used during boot but can be used after that, stored by virtual address
-    BOOT(Range<usize>),
+    /// Memory is used during boot but can be used after that
+    BOOT(&'static mut [u8]),
 }
 
 const MAX_REGIONS: usize = 8;
@@ -69,21 +70,49 @@ fn add_mem_region(region: StoredMemRegion) -> bool {
 }
 
 /// Mark a region of virtual memory as already used
-pub fn add_used_mem(range: [Range<usize>; 1]) {
-    if !add_mem_region(StoredMemRegion::USED(range[0].clone())) {
-        panic!("Failed to record used memory {:?}. Increase MAX_USED_MEM", range[0]);
+pub fn add_used_mem(mem: &'static mut [u8]) {
+    let start = mem.as_ptr() as usize;
+    let end = start + mem.len();
+    if !add_mem_region(StoredMemRegion::USED(mem)) {
+        panic!("Failed to record used memory [{:x}..{:x}]. Increase MAX_USED_MEM", start, end);
     }
-    print!(Info, "Marked region [{:x}..{:x}] as initially allocated", range[0].start, range[0].end);
+    print!(Info, "Marked region [{:x}..{:x}] as initially allocated", start, end);
 }
 
-/// Add memory by virtual address
-pub unsafe fn add_mem(range: [Range<usize>; 1]) {
-    // TODO: at some point should probably use declare_obj instead of using range_valid
-    assert!(unsafe{KERNEL_WINDOW.range_valid(range.clone())});
+/// Add a region of memory to the heap
+///
+/// This works by passing ownership of a slice of memory to the allocator. As a result this
+/// function is not `unsafe` as, assuming type safety hasn't already been broken, the provided
+/// memory is not used for anything else.
+///
+/// Generally you probably do not want to use this as it bypasses any splitting around used mem
+/// since you *shouldn't* have the slice if the memory region is used, as a slice would have
+/// already been created to mark it used. Use `add_mem` if you just have a virtual address range
+pub fn add_mem_owned(mem: &'static mut [u8]) {
+    // TODO: assert that we haven't passed a range that is initially allocated
     // Provide to the buddy allocator
-    print!(Info, "Adding usable memory region [{:x}..{:x}]", range[0].start, range[0].end);
-    BUDDY.add(range[0].start, range[0].end - range[0].start);
+    let start = mem.as_ptr() as usize;
+    let end = start + mem.len();
+    print!(Info, "Adding usable memory region [{:x}..{:x}]", start, end);
+    // TODO: buddy should take mem
+    unsafe {BUDDY.add(start, end - start)}
 }
+
+/// Add a virtual address range of memory to the heap
+///
+/// # Safety
+///
+/// In passing the range your are claiming that the range of memory is either not owned,
+/// and is safe to start using, or is owned and has already been passed to the heap as
+/// a used memory region.
+pub unsafe fn add_mem(range: [Range<usize>; 1]) {
+    //TODO: split by used and use declare_obj
+    add_mem_owned(slice::from_raw_parts_mut(range[0].start as *mut u8, range[0].end - range[0].start))
+}
+
+/// Attempt to add a range of memory to the heap
+///
+/// Takes a virtual address range and any 
 
 unsafe fn heap_alloc(layout: Layout) -> *mut Opaque {
     let size = max(layout.align(), layout.size());

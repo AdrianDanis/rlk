@@ -2,4 +2,4 @@
 
 mod window;
 
-pub use self::window::{Window, declare_obj};
+pub use self::window::{Window, declare_obj, declare_slice};

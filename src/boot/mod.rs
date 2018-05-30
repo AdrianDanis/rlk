@@ -5,6 +5,7 @@ pub mod state;
 
 use state::KERNEL_WINDOW;
 use heap;
+use vspace::declare_slice;
 
 extern {
     static kernel_image_start: usize;
@@ -20,7 +21,7 @@ fn mark_image_mem() {
         let end_vaddr = &kernel_image_end as *const usize as usize;
         // Convert to physical addresses. We unwrap as it is a fundamental assumption that
         // the kernel is mapped in and has valid virtual addresses
-        let image_paddr = KERNEL_WINDOW.vaddr_to_paddr_range([begin_vaddr..end_vaddr]).unwrap();
+        let image_paddr = declare_slice(KERNEL_WINDOW, begin_vaddr, end_vaddr - begin_vaddr).unwrap();
         heap::add_used_mem(image_paddr);
     }
 }
