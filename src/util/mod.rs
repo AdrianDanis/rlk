@@ -2,6 +2,47 @@
 
 use core;
 use core::ops::Range;
+use core::mem::size_of;
+use core::fmt;
+
+/// A range type that has nice printability
+///
+/// This provides no useful methods for manipulation and is intended only for using as
+/// a wrapper for formatting other ranges
+pub struct PrintRange<T> {
+    start: T,
+    end: T,
+}
+
+impl<'a, F, T: From<usize>> From<&'a[F]> for PrintRange<T> {
+    fn from(slice: &'a [F]) -> PrintRange<T> {
+        PrintRange {
+            start: T::from(slice.as_ptr() as usize),
+            end: T::from( (slice.as_ptr() as usize) + size_of::<F>() * slice.len()),
+        }
+    }
+}
+
+impl<'a, F, T: From<usize>> From<&'a mut[F]> for PrintRange<T> {
+    fn from(slice: &'a mut [F]) -> PrintRange<T> {
+        PrintRange {
+            start: T::from(slice.as_ptr() as usize),
+            end: T::from( (slice.as_ptr() as usize) + size_of::<F>() * slice.len()),
+        }
+    }
+}
+
+impl<T: fmt::Display> fmt::Display for PrintRange<T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(fmt, "[{}..{}]", self.start, self.end)
+    }
+}
+
+impl<T: fmt::LowerHex> fmt::LowerHex for PrintRange<T> {
+    fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        write!(fmt, "[{:x}..{:x}]", self.start, self.end)
+    }
+}
 
 pub fn split_first_str<'a, P: core::str::pattern::Pattern<'a>> (slice: &'a str, predicate: P) -> (&'a str, &'a str) {
     let mut iter = slice.splitn(2, predicate);

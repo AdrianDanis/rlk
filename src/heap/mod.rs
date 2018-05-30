@@ -8,7 +8,7 @@ use core::ops::Range;
 use core::slice;
 use state::KERNEL_WINDOW;
 use ::ALLOCATOR;
-use util::log2_usize;
+use util::{log2_usize, PrintRange};
 use core::cmp::max;
 
 pub struct AllocProxy {
@@ -71,12 +71,11 @@ fn add_mem_region(region: StoredMemRegion) -> bool {
 
 /// Mark a region of virtual memory as already used
 pub fn add_used_mem(mem: &'static mut [u8]) {
-    let start = mem.as_ptr() as usize;
-    let end = start + mem.len();
+    let display = PrintRange::<usize>::from(mem as &[u8]);
     if !add_mem_region(StoredMemRegion::USED(mem)) {
-        panic!("Failed to record used memory [{:x}..{:x}]. Increase MAX_USED_MEM", start, end);
+        panic!("Failed to record used memory {:x}. Increase MAX_USED_MEM", display);
     }
-    print!(Info, "Marked region [{:x}..{:x}] as initially allocated", start, end);
+    print!(Info, "Marked region {:x} as initially allocated", display);
 }
 
 /// Add a region of memory to the heap
@@ -91,9 +90,10 @@ pub fn add_used_mem(mem: &'static mut [u8]) {
 pub fn add_mem_owned(mem: &'static mut [u8]) {
     // TODO: assert that we haven't passed a range that is initially allocated
     // Provide to the buddy allocator
+    let display = PrintRange::<usize>::from(mem as &[u8]);
     let start = mem.as_ptr() as usize;
     let end = start + mem.len();
-    print!(Info, "Adding usable memory region [{:x}..{:x}]", start, end);
+    print!(Info, "Adding usable memory region {:x}", display);
     // TODO: buddy should take mem
     unsafe {BUDDY.add(start, end - start)}
 }
