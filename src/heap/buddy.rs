@@ -159,8 +159,9 @@ impl Buddy {
         let mut len = mem.len();
         // track how much memor we waste due to alignment
         let mut wasted: usize = 0;
-        // convert base into a correctly aligned pointer of our MIN_ORDER
-        let offset = min((base as *mut Node).align_offset(1 << MIN_ORDER), len);
+        // pointer::align_offset behaves in completely insane ways and fails to determine of offset to align a pointer that is
+        // completely alignable. so we calculate an offset ourself
+        let offset = min(if (base % (1 << MIN_ORDER)) == 0 { 0 } else { (1 << MIN_ORDER) - (base % (1 << MIN_ORDER)) }, len);
         base+=offset;
         len-=offset;
         wasted+=offset;

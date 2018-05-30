@@ -10,6 +10,7 @@ use state::KERNEL_WINDOW;
 use ::ALLOCATOR;
 use util::{log2_usize, PrintRange};
 use core::cmp::max;
+use vspace::declare_slice;
 
 pub struct AllocProxy {
     alloc_fn: unsafe fn(Layout) -> *mut Opaque,
@@ -91,8 +92,6 @@ pub fn add_mem_owned(mem: &'static mut [u8]) {
     // TODO: assert that we haven't passed a range that is initially allocated
     // Provide to the buddy allocator
     let display = PrintRange::<usize>::from(mem as &[u8]);
-    let start = mem.as_ptr() as usize;
-    let end = start + mem.len();
     print!(Info, "Adding usable memory region {:x}", display);
     unsafe {BUDDY.add(mem)}
 }
@@ -104,14 +103,35 @@ pub fn add_mem_owned(mem: &'static mut [u8]) {
 /// In passing the range your are claiming that the range of memory is either not owned,
 /// and is safe to start using, or is owned and has already been passed to the heap as
 /// a used memory region.
-pub unsafe fn add_mem(range: [Range<usize>; 1]) {
-    //TODO: split by used and use declare_obj
-    add_mem_owned(slice::from_raw_parts_mut(range[0].start as *mut u8, range[0].end - range[0].start))
-}
-
-/// Attempt to add a range of memory to the heap
 ///
-/// Takes a virtual address range and any 
+/// # Panics
+///
+/// Will panic if the memory provided is not deemed valid according to the current `KERNEL_WINDOW`
+pub unsafe fn add_mem(range: [Range<usize>; 1]) {
+    for region in MEM_REGIONS.iter().filter_map(|x| x.as_ref().and_then(|x| match x { StoredMemRegion::USED(range) => Some(range), _ => None })) {
+        let start = region.as_ptr() as usize;
+        let end = start + region.len();
+        if range[0].end <= start || range[0].start >= end {
+            // range is completely outside, nothing to be done
+        } else {
+            // see if we need to add an initial region
+            if range[0].start < start {
+                add_mem([range[0].start..start]);
+            }
+            // see if we need to add a final region
+            if range[0].end > end {
+                add_mem([end..range[0].end]);
+            }
+            return;
+        }
+    }
+    // Range not already used, grab it from the KERNEL_WINDOW just to be sure
+    if let Some(mem) = declare_slice(KERNEL_WINDOW, range[0].start, range[0].end - range[0].start) {
+        add_mem_owned(mem);
+    } else {
+        panic!("Invalid memory range {:?} according to current KERNEL_WINDOW", range);
+    }
+}
 
 unsafe fn heap_alloc(layout: Layout) -> *mut Opaque {
     let size = max(layout.align(), layout.size());
