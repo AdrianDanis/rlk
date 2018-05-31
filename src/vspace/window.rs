@@ -25,25 +25,25 @@ use core::slice;
 /// will keep producing the same paddr and vaddr
 pub unsafe trait Window {
     /// Check if a range is valid
-    fn range_valid(&self, range: [Range<usize>; 1]) -> bool;
+    fn range_valid(&self, range: Range<usize>) -> bool;
     /// Convert a virtual address to a physical address
     fn vaddr_to_paddr(&self, vaddr: usize) -> Option<usize> {
-        self.vaddr_to_paddr_range([vaddr..vaddr+1]).map(|x| x[0].start)
+        self.vaddr_to_paddr_range(vaddr..vaddr+1).map(|x| x.start)
     }
     /// Convert a physical address tyo a virtual address
     fn paddr_to_vaddr(&self, paddr: usize) -> Option<usize> {
-        self.paddr_to_vaddr_range([paddr..paddr+1]).map(|x| x[0].start)
+        self.paddr_to_vaddr_range(paddr..paddr+1).map(|x| x.start)
     }
     /// Convert a virtual address range to a physical address range
     ///
     /// Compared to `vaddr_to_paddr` this ensures that the underlying physical address
     /// range is contiguous
-    fn vaddr_to_paddr_range(&self, range: [Range<usize>; 1]) -> Option<[Range<usize>; 1]>;
+    fn vaddr_to_paddr_range(&self, range: Range<usize>) -> Option<Range<usize>>;
     /// Convert a physical address range to a virtual address range
     ///
     /// Compared to `paddr_to_vaddr` this ensures that the final virtual address
     /// range is contiguous
-    fn paddr_to_vaddr_range(&self, range: [Range<usize>; 1]) -> Option<[Range<usize>; 1]>;
+    fn paddr_to_vaddr_range(&self, range:Range<usize>) -> Option<Range<usize>>;
 }
 
 /// Declares that an object exists at this virtual address
@@ -60,7 +60,7 @@ pub unsafe trait Window {
 /// construct T lives inside that virtual address range and that you have not already
 /// constructed an object in that range.
 pub unsafe fn declare_obj<'a, T>(window: &'a Window, base_vaddr: usize) -> Option<&'static mut T> {
-    if (base_vaddr % align_of::<T>()) == 0 && window.range_valid([base_vaddr..base_vaddr + size_of::<T>()]) {
+    if (base_vaddr % align_of::<T>()) == 0 && window.range_valid(base_vaddr..base_vaddr + size_of::<T>()) {
         Some(transmute(base_vaddr as *mut T))
     } else {
         None
@@ -68,7 +68,7 @@ pub unsafe fn declare_obj<'a, T>(window: &'a Window, base_vaddr: usize) -> Optio
 }
 
 pub unsafe fn declare_slice<'a, T>(window: &'a Window, base_vaddr: usize, items: usize) -> Option<&'static mut [T]> {
-    if (base_vaddr % align_of::<T>()) == 0 && window.range_valid([base_vaddr..base_vaddr + size_of::<T>() * items]) {
+    if (base_vaddr % align_of::<T>()) == 0 && window.range_valid(base_vaddr..base_vaddr + size_of::<T>() * items) {
         Some(slice::from_raw_parts_mut(base_vaddr as *mut T, items))
     } else {
         None

@@ -68,8 +68,8 @@ pub fn log2_usize(v: usize) -> u32 {
 }
 
 // TODO: make this generic instead of just being for usize
-pub fn range_contains(parent: &[Range<usize>; 1], child: &[Range<usize>; 1]) -> bool {
-    parent[0].contains(&child[0].start) && parent[0].contains(&(child[0].end - 1))
+pub fn range_contains(parent: &Range<usize>, child: &Range<usize>) -> bool {
+    parent.contains(&child.start) && parent.contains(&(child.end - 1))
 }
 
 /// Empty trait with no methods

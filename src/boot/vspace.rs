@@ -25,26 +25,26 @@ const KERNEL_IMAGE_BASE: usize = 0xffffffff80000000;
 const KERNEL_PHYS_BASE: usize = 0x0;
 
 /// Initial kernel window, which is only 4gb
-const INIT: [Range<usize>; 1] = [KERNEL_BASE..KERNEL_BASE + 4*GB];
+const INIT: Range<usize> = KERNEL_BASE..KERNEL_BASE + 4*GB;
 /// Kernel image window, which is the first 1gb from the image base
-const INIT_IMAGE: [Range<usize>; 1] = [KERNEL_IMAGE_BASE..KERNEL_IMAGE_BASE + GB];
+const INIT_IMAGE: Range<usize> = KERNEL_IMAGE_BASE..KERNEL_IMAGE_BASE + GB;
 
 unsafe impl Window for Init {
-    fn range_valid(&self, range: [Range<usize>; 1]) -> bool {
+    fn range_valid(&self, range: Range<usize>) -> bool {
         range_contains(&INIT, &range) || range_contains(&INIT_IMAGE, &range)
     }
-    fn vaddr_to_paddr_range(&self, range: [Range<usize>; 1]) -> Option<[Range<usize>; 1]> {
+    fn vaddr_to_paddr_range(&self, range: Range<usize>) -> Option<Range<usize>> {
         if range_contains(&INIT, &range) {
-            Some([range[0].start - INIT[0].start..range[0].end - INIT[0].start])
+            Some(range.start - INIT.start..range.end - INIT.start)
         } else if range_contains(&INIT_IMAGE, &range) {
-            Some([range[0].start - INIT_IMAGE[0].start..range[0].end - INIT_IMAGE[0].start])
+            Some(range.start - INIT_IMAGE.start..range.end - INIT_IMAGE.start)
         } else {
             None
         }
     }
-    fn paddr_to_vaddr_range(&self, range: [Range<usize>; 1]) -> Option<[Range<usize>; 1]> {
+    fn paddr_to_vaddr_range(&self, range: Range<usize>) -> Option<Range<usize>> {
         self.vaddr_to_paddr_range(INIT_IMAGE)
-            .and_then(|x| if range_contains(&x, &range) { Some([range[0].start + INIT_IMAGE[0].start..range[0].end + INIT_IMAGE[0].start]) } else { None})
+            .and_then(|x| if range_contains(&x, &range) { Some(range.start + INIT_IMAGE.start..range.end + INIT_IMAGE.start) } else { None})
     }
 }
 

@@ -107,26 +107,26 @@ pub fn add_mem_owned(mem: &'static mut [u8]) {
 /// # Panics
 ///
 /// Will panic if the memory provided is not deemed valid according to the current `KERNEL_WINDOW`
-pub unsafe fn add_mem(range: [Range<usize>; 1]) {
+pub unsafe fn add_mem(range: Range<usize>) {
     for region in MEM_REGIONS.iter().filter_map(|x| x.as_ref().and_then(|x| match x { StoredMemRegion::USED(range) => Some(range), _ => None })) {
         let start = region.as_ptr() as usize;
         let end = start + region.len();
-        if range[0].end <= start || range[0].start >= end {
+        if range.end <= start || range.start >= end {
             // range is completely outside, nothing to be done
         } else {
             // see if we need to add an initial region
-            if range[0].start < start {
-                add_mem([range[0].start..start]);
+            if range.start < start {
+                add_mem(range.start..start);
             }
             // see if we need to add a final region
-            if range[0].end > end {
-                add_mem([end..range[0].end]);
+            if range.end > end {
+                add_mem(end..range.end);
             }
             return;
         }
     }
     // Range not already used, grab it from the KERNEL_WINDOW just to be sure
-    if let Some(mem) = declare_slice(KERNEL_WINDOW, range[0].start, range[0].end - range[0].start) {
+    if let Some(mem) = declare_slice(KERNEL_WINDOW, range.start, range.end - range.start) {
         add_mem_owned(mem);
     } else {
         panic!("Invalid memory range {:?} according to current KERNEL_WINDOW", range);
@@ -163,12 +163,12 @@ pub fn enable_heap() {
 ///
 /// This is a more general version of `add_mem` and allows for adding memory that is not yet
 /// available to describe virtually
-pub unsafe fn add_mem_physical(range: [Range<usize>; 1]) {
+pub unsafe fn add_mem_physical(range: Range<usize>) {
     if let Some(vaddr) = KERNEL_WINDOW.paddr_to_vaddr_range(range.clone()) {
         add_mem(vaddr)
     } else {
-        if !add_mem_region(StoredMemRegion::HIGH(range[0].clone())) {
-            print!(Info, "Had to throw away memory region {:?} as it is not in kernel window and ran out of EXTRA_MEM slots. Consider increasing MAX_EXTRA_MEM", range[0]);
+        if !add_mem_region(StoredMemRegion::HIGH(range.clone())) {
+            print!(Info, "Had to throw away memory region {:?} as it is not in kernel window and ran out of EXTRA_MEM slots. Consider increasing MAX_EXTRA_MEM", range);
             return;
         }
     }

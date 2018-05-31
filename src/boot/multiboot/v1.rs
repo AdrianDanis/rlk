@@ -73,8 +73,8 @@ impl Header {
 
 fn paddr_to_slice<'a>(p: PAddr, sz: usize) -> Option<&'a [u8]> {
     unsafe {
-        KERNEL_WINDOW.paddr_to_vaddr_range([p as usize..p as usize + sz])
-            .map(|x| slice::from_raw_parts(mem::transmute(x[0].start), sz))
+        KERNEL_WINDOW.paddr_to_vaddr_range(p as usize..p as usize + sz)
+            .map(|x| slice::from_raw_parts(mem::transmute(x.start), sz))
     }
 }
 
@@ -94,7 +94,7 @@ pub fn init(mb: usize) {
         print!(Info, "Parsing regions");
         unsafe {
             memiter.filter(|x| x.memory_type() == MemoryType::Available)
-                .for_each(|x| heap::add_mem_physical([x.base_address() as usize..x.base_address() as usize+x.length() as usize]));
+                .for_each(|x| heap::add_mem_physical(x.base_address() as usize..x.base_address() as usize+x.length() as usize));
         }
     } else {
         print!(Error, "Found no memory regions");
