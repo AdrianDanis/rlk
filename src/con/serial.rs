@@ -12,7 +12,7 @@ pub struct ConSerial {
 static mut EARLY_SERIAL: ConSerial = ConSerial { uart: None };
 
 impl Con for ConSerial {
-    fn print(&mut self, s: &str) -> () {
+    fn print(&mut self, s: &str) -> fmt::Result {
         unsafe {
             match self.uart {
                 Some(ref mut uart) =>
@@ -24,8 +24,9 @@ impl Con for ConSerial {
                 None => (),
             }
         }
+        Ok(())
     }
-    fn prepare(&mut self, v: V) {
+    fn prepare(&mut self, v: V) -> fmt::Result {
         //unimplemented!()
         // TODO: option for disabling ansi terminal assumption
         let mut wbf = |col| fmt::Write::write_fmt(self as &mut EarlyCon, format_args!("\x1B[1;{}m", col));
@@ -35,9 +36,9 @@ impl Con for ConSerial {
             V::Info => wbf(37),
             V::Debug => wbf(32),
             V::Trace => wbf(34),
-        };
+        }
     }
-    fn end(&mut self) {
+    fn end(&mut self) -> fmt::Result {
         //unimplemented!()
         unsafe {
             match self.uart {
@@ -47,7 +48,8 @@ impl Con for ConSerial {
                     },
                 None => (),
             }
-        }
+        };
+        Ok(())
     }
 }
 

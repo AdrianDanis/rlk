@@ -42,13 +42,13 @@ pub enum V {
 // TODO: define buffer for con
 
 
-trait Con {
-    fn print(&mut self, s: &str);
-    fn prepare(&mut self, v: V);
-    fn end(&mut self);
+pub trait Con {
+    fn print(&mut self, s: &str) -> fmt::Result;
+    fn prepare(&mut self, v: V) -> fmt::Result;
+    fn end(&mut self) -> fmt::Result;
 }
 
-trait EarlyCon: Con {
+pub trait EarlyCon: Con {
     // TODO: should this be a general `Con` trait?
     fn shutdown(&mut self);
     // EarlyCon's start in a kernel without any device mappings, this tells the con that virtual
@@ -79,8 +79,7 @@ static mut CON_STATE: State = State {early: None, verbosity: V::Debug};
 
 impl fmt::Write for EarlyCon {
     fn write_str(&mut self, s: &str) -> fmt::Result {
-        self.print(s);
-        Ok(())
+        self.print(s)
     }
 }
 
@@ -110,27 +109,34 @@ impl State {
         true
     }
 
-    fn print_line(&mut self, verbosity: V, args: fmt::Arguments) {
+    fn print_line(&mut self, verbosity: V, args: fmt::Arguments) -> fmt::Result {
         // Currently only assume the early con
         unsafe {
             match self.early {
                 Some(ref mut con) => {
-                    con.prepare(verbosity);
-                    fmt::Write::write_fmt(con, args);
-                    con.end();
-                    },
-                None => (),
+                    con.prepare(verbosity)?;
+                    if let err@Err(_) = fmt::Write::write_fmt(con, args) {
+                        // still run `end`, but return the error from write_fmt
+                        let _ = con.end();
+                        err
+                    } else {
+                        con.end()
+                    }
+                },
+                None => Ok(()),
             }
         }
     }
 
-    pub fn print(&mut self, verbosity: V, args: fmt::Arguments) {
+    pub fn print(&mut self, verbosity: V, args: fmt::Arguments) -> fmt::Result {
         // TODO utf8 handling
         if self.log_allowed(verbosity) {
             // Generate actual message and print it
             let seconds = 0 as u64;
             let micros = 0 as u32;
-            self.print_line(verbosity, format_args!("[{:0>5}.{:0>5}] {}", seconds, micros, args));
+            self.print_line(verbosity, format_args!("[{:0>5}.{:0>5}] {}", seconds, micros, args))
+        } else {
+            Ok(())
         }
     }
 }
@@ -144,17 +150,18 @@ pub fn early_init(early: &str) {
 }
 
 pub fn print(verbosity: V, message: &str) {
-    print_fmt(verbosity, format_args!("{}", message));
+    print_fmt(verbosity, format_args!("{}", message))
 }
 
-pub fn print_fmt(verbosity: V, args: fmt::Arguments) -> fmt::Result {
-    unsafe{get().print(verbosity, args);};
-    Ok(())
+pub fn print_fmt(verbosity: V, args: fmt::Arguments) {
+    if let Err(err) = unsafe{get()}.print(verbosity, args) {
+        panic!("Print failed with {}", err);
+    }
 }
 
 #[macro_export]
 macro_rules! print {
-    ($v:ident, $($arg:tt)*) => ($crate::con::print_fmt($crate::con::V::$v, format_args!($($arg)*)).unwrap());
+    ($v:ident, $($arg:tt)*) => ($crate::con::print_fmt($crate::con::V::$v, format_args!($($arg)*)));
 }
 
 /// Format of the --earlycon= parameter is: CON_NAME,ARG1=foo,ARG2=bar

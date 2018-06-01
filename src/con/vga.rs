@@ -1,5 +1,6 @@
 //! VGA console
 
+use core::fmt;
 use core::{ptr, intrinsics};
 use x86::io;
 
@@ -114,7 +115,7 @@ impl VGAText {
 }
 
 impl Con for VGAText {
-    fn print(&mut self, s: &str) -> () {
+    fn print(&mut self, s: &str) -> fmt::Result {
         if self.scroll_next {
             self.next_line();
             self.scroll_next = false;
@@ -133,18 +134,21 @@ impl Con for VGAText {
                 }
             }
         }
+        Ok(())
     }
-    fn prepare(&mut self, v: V) {
+    fn prepare(&mut self, v: V) -> fmt::Result {
         self.active_color = match v {
             V::Panic => self.panic_color,
             V::Error => self.error_color,
             V::Info => self.info_color,
             V::Debug => self.debug_color,
             V::Trace => self.trace_color,
-        }
+        };
+        Ok(())
     }
-    fn end(&mut self) {
+    fn end(&mut self) -> fmt::Result {
         self.scroll_next = true;
+        Ok(())
     }
 }
 
