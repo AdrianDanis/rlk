@@ -58,7 +58,7 @@ pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
     print!(Info, "Info");
     print!(Debug, "Debug");
     print!(Trace, "Trace");
-    loop {}
+    panic!("End of boot");
 }
 
 #[lang = "oom"]
