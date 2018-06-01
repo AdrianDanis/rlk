@@ -1,7 +1,6 @@
 use core::fmt;
 use drivers;
 use drivers::Serial;
-use drivers::uart16550::Uart;
 
 use super::{Con, EarlyCon, V};
 
@@ -63,7 +62,7 @@ impl EarlyCon for ConSerial {
 }
 
 impl ConSerial {
-    pub fn early_init(args: &str) ->Result<&'static mut EarlyCon, ()> {
+    pub fn early_init(_args: &str) ->Result<&'static mut EarlyCon, ()> {
         unsafe {
             EARLY_SERIAL.uart = Some(drivers::uart16550::Uart::new(drivers::io::PortIO::new(0x3f8)));
         }

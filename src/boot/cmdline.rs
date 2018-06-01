@@ -22,7 +22,7 @@ pub fn set(cmdline: &str) {
 /// Utility for testing for cmdline options that have been set to a true value
 /// matches 1, true, on and enabled as being 'true'
 pub fn option_is_true(value: &str) -> bool {
-    match (value) {
+    match value {
         "1" | "ON" | "on" | "TRUE" | "true" | "ENABLED" | "enabled" => true,
         _ => false
     }

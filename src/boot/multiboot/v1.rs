@@ -90,7 +90,7 @@ pub fn init(mb: usize) {
     // Now mark anything additional from multiboot specifically
 
     // Add free memory
-    if let Some(mut memiter) = mb.memory_regions() {
+    if let Some(memiter) = mb.memory_regions() {
         print!(Info, "Parsing regions");
         unsafe {
             memiter.filter(|x| x.memory_type() == MemoryType::Available)

@@ -23,6 +23,7 @@ struct VGAText {
 
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
+#[allow(dead_code)]
 enum BackgroundColor {
     Black = 0,
     Blue = 1,
@@ -35,6 +36,7 @@ enum BackgroundColor {
 
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
+#[allow(dead_code)]
 enum ForegroundColor {
     Black = 0,
     Blue = 1,

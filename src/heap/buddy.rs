@@ -1,8 +1,6 @@
 //! Buddy memory allocator
 
-use core::ops::Range;
-use core::cmp::{min, max, Ordering};
-use core::ptr::NonNull;
+use core::cmp::{min, Ordering};
 use core::alloc::Opaque;
 use core::slice;
 use util::log2_usize;
@@ -44,7 +42,7 @@ const NUM_ORDERS: usize = MAX_ORDER as usize - MIN_ORDER as usize + 1;
 static mut HEAP_DEBUG_FREE: bool = false;
 
 fn heap_debug_free(debug_free: &str) {
-    if (option_is_true(debug_free)) {
+    if option_is_true(debug_free) {
         unsafe {
             HEAP_DEBUG_FREE = true;
         }
@@ -122,12 +120,12 @@ impl Buddy {
         // Should always be size aligned
         assert!((len % len) == 0);
         assert!(base != 0);
-        if (heap_debug_free_enabled()) {
+        if heap_debug_free_enabled() {
             // walk all the nodes, check for any overlaps etc
             // TODO
         }
         let size = log2_usize(mem.len());
-        if (size < MIN_ORDER || size > MAX_ORDER) {
+        if size < MIN_ORDER || size > MAX_ORDER {
             panic!("Free of object with invalid size");
         }
         let index = (size - MIN_ORDER) as usize;
@@ -141,7 +139,7 @@ impl Buddy {
                     // We are not aligned, so we are b
                     base - len
                 };
-            if let Some((slice, node)) = self.pools[index].remove(Node {addr: other_base, order: size}) {
+            if let Some((slice, _)) = self.pools[index].remove(Node {addr: other_base, order: size}) {
                 // Insert the larger node instead
                 return self.free(unsafe{slice::from_raw_parts_mut(min(slice.as_ptr() as usize, base) as *mut u8, len * 2)});
             }
@@ -154,7 +152,7 @@ impl Buddy {
     ///
     /// Memory has no requirements on size or alignment and will be split into multiple pieces as required
     ///
-    pub fn add(&mut self, mut mem: &'static mut [u8]) {
+    pub fn add(&mut self, mem: &'static mut [u8]) {
         let mut base = mem.as_ptr() as usize;
         let mut len = mem.len();
         // track how much memor we waste due to alignment

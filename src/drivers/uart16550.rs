@@ -2,10 +2,10 @@
 
 use super::io::Io;
 use super::Serial;
-use bitfield::BitRange;
 use core::mem;
 
 #[repr(u8)]
+#[allow(dead_code)]
 enum Parity {
     None = 0,
     Odd = 1,
@@ -20,6 +20,7 @@ enum Parity {
 }
 
 #[repr(u8)]
+#[allow(dead_code)]
 enum WordLength {
     Bits5 = 0,
     Bits6 = 1,
@@ -53,24 +54,17 @@ impl Into<u8> for Parity {
 
 bitfield!{
     pub struct LCR(u8);
-//    no default BitRange;
+    #[allow(dead_code)]
     dlab, set_dlab: 7,7;
+    #[allow(dead_code)]
     sbe, set_sbe: 6,6;
+    #[allow(dead_code)]
     parity, set_parity: 5, 3;
+    #[allow(dead_code)]
     stops, set_stops: 2, 2;
+    #[allow(dead_code)]
     word_len, set_word_len: 2, 0;
 }
-
-//impl<T> BitRange<T> for LCR where T: Into<u8>, T: From<u8> {
-//    fn bit_range(&self, msb: usize, lsb: usize) -> T {
-//        T::from(0)
-//        T::from((self as &BitRange<u8>).bit_range(msb, lsb))
-//    }
-//    fn set_bit_range(&mut self, msb: usize, lsb: usize, value: T) {
-//        (self as &mut BitRange<u8>).set_bit_range(msb, lsb, value.into())
-//        (self as &mut BitRange<u8>).set_bit_range(msb, lsb, 0)
-//    }
-//}
 
 bitflags! {
     /// Interrupt Enable Register
@@ -149,6 +143,7 @@ pub struct Uart<T: Io<Item = u8>> {
 impl<T, R> Uart<T> where T: Io<Item = u8, Range=R>, R: From<u8> {
     // Due to register overlapping we don't define a register map and just have direct logical
     // accessor functions
+    #[allow(dead_code)]
     unsafe fn read_data(&mut self) -> u8 {
         self.io.read(R::from(0))
     }

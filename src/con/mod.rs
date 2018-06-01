@@ -16,12 +16,8 @@
 // 3. Attempt default init of early consoles
 
 use core::result::Result;
-use core::{fmt, ptr, intrinsics};
+use core::fmt;
 use util;
-use x86::io;
-use drivers;
-use drivers::Serial;
-use drivers::uart16550::Uart;
 
 mod vga;
 mod serial;
@@ -111,20 +107,18 @@ impl State {
 
     fn print_line(&mut self, verbosity: V, args: fmt::Arguments) -> fmt::Result {
         // Currently only assume the early con
-        unsafe {
-            match self.early {
-                Some(ref mut con) => {
-                    con.prepare(verbosity)?;
-                    if let err@Err(_) = fmt::Write::write_fmt(con, args) {
-                        // still run `end`, but return the error from write_fmt
-                        let _ = con.end();
-                        err
-                    } else {
-                        con.end()
-                    }
-                },
-                None => Ok(()),
-            }
+        match self.early {
+            Some(ref mut con) => {
+                con.prepare(verbosity)?;
+                if let err@Err(_) = fmt::Write::write_fmt(con, args) {
+                    // still run `end`, but return the error from write_fmt
+                    let _ = con.end();
+                    err
+                } else {
+                    con.end()
+                }
+            },
+            None => Ok(()),
         }
     }
 
@@ -169,6 +163,7 @@ macro_rules! print {
 make_cmdline_decl!("earlycon", early_init, EARLYCON);
 
 // TODO: add this as a test once we have a self test system
+#[allow(dead_code)]
 fn self_test() -> bool {
     print!(Debug, "unicode: 🍳  ");
     print!(Debug, "newline \n are escaped");

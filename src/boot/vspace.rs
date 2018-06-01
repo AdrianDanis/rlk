@@ -4,8 +4,6 @@ use vspace::Window;
 use util::units::GB;
 use util::range_contains;
 use core::ops::Range;
-use core::marker::PhantomData;
-use core::borrow::Borrow;
 
 pub struct Init;
 
@@ -35,16 +33,16 @@ unsafe impl Window for Init {
     }
     fn vaddr_to_paddr_range(&self, range: Range<usize>) -> Option<Range<usize>> {
         if range_contains(&INIT, &range) {
-            Some(range.start - INIT.start..range.end - INIT.start)
+            Some(range.start - (INIT.start - KERNEL_PHYS_BASE)..range.end - (INIT.start - KERNEL_PHYS_BASE))
         } else if range_contains(&INIT_IMAGE, &range) {
-            Some(range.start - INIT_IMAGE.start..range.end - INIT_IMAGE.start)
+            Some(range.start - (INIT_IMAGE.start - KERNEL_PHYS_BASE)..range.end - (INIT_IMAGE.start - KERNEL_PHYS_BASE))
         } else {
             None
         }
     }
     fn paddr_to_vaddr_range(&self, range: Range<usize>) -> Option<Range<usize>> {
         self.vaddr_to_paddr_range(INIT_IMAGE)
-            .and_then(|x| if range_contains(&x, &range) { Some(range.start + INIT_IMAGE.start..range.end + INIT_IMAGE.start) } else { None})
+            .and_then(|x| if range_contains(&x, &range) { Some(range.start - KERNEL_PHYS_BASE + INIT_IMAGE.start..range.end - KERNEL_PHYS_BASE + INIT_IMAGE.start) } else { None})
     }
 }
 

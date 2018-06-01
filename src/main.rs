@@ -25,7 +25,6 @@ extern crate x86;
 extern crate bitflags;
 #[macro_use]
 extern crate bitfield;
-#[macro_use]
 extern crate alloc;
 
 #[macro_use]
@@ -41,9 +40,6 @@ pub mod vspace;
 pub mod heap;
 pub mod state;
 pub mod ip_collections;
-
-use drivers::Serial;
-use vspace::{Window, declare_obj};
 
 /// Allocator has to be defined in the root of the crate so we extern it here and actually declare in heap
 #[global_allocator]

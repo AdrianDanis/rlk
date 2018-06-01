@@ -5,7 +5,7 @@
 
 use core::ptr::NonNull;
 use core::slice;
-use core::mem::{size_of, align_of, transmute};
+use core::mem::{size_of, align_of};
 
 /// Generic node for in place data structures
 ///

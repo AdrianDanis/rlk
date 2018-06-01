@@ -1,7 +1,3 @@
 //! Definitions for state that is valid for boot
-
-use vspace::Window;
-
-//struct State<'a> {
-//    window: Window<'a>,
-//}
+//!
+//! This is currently an aspirational module and not yet clear there needs to be anything here

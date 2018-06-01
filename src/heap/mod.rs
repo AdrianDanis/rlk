@@ -5,7 +5,6 @@ mod buddy;
 use core::alloc::{Layout, Opaque};
 use alloc::alloc::GlobalAlloc;
 use core::ops::Range;
-use core::slice;
 use state::KERNEL_WINDOW;
 use ::ALLOCATOR;
 use util::{log2_usize, PrintRange};
@@ -17,11 +16,11 @@ pub struct AllocProxy {
     dealloc_fn: unsafe fn(*mut Opaque, Layout),
 }
 
-unsafe fn alloc_error(layout: Layout) -> *mut Opaque {
+unsafe fn alloc_error(_layout: Layout) -> *mut Opaque {
     panic!("Allocation before allocator is set")
 }
 
-unsafe fn dealloc_error(ptr: *mut Opaque, layout: Layout) {
+unsafe fn dealloc_error(_ptr: *mut Opaque, _layout: Layout) {
     panic!("Deallocation before allocator is set")
 }
 
@@ -47,6 +46,7 @@ enum StoredMemRegion {
     /// Memory does not fit in the initial kernel window and should be added later, stored by physical address
     HIGH(Range<usize>),
     /// Memory is used during boot but can be used after that
+    #[allow(dead_code)]
     BOOT(&'static mut [u8]),
 }
 
@@ -147,7 +147,7 @@ unsafe fn heap_alloc(layout: Layout) -> *mut Opaque {
     }
 }
 
-unsafe fn heap_dealloc(ptr: *mut Opaque, layout: Layout) {
+unsafe fn heap_dealloc(_ptr: *mut Opaque, _layout: Layout) {
     unimplemented!()
 }
 
