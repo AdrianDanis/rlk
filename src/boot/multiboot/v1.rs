@@ -2,6 +2,7 @@ use multiboot::*;
 use boot;
 use state::KERNEL_WINDOW;
 use heap;
+use vspace;
 
 use core::{mem, slice};
 
@@ -81,13 +82,21 @@ fn paddr_to_slice<'a>(p: PAddr, sz: usize) -> Option<&'a [u8]> {
 pub fn init(mb: usize) {
     // Process cmdline as we want to get this done as soon as possible for earlycon
     let mb = unsafe{Multiboot::new(mb as PAddr, paddr_to_slice)}.unwrap();
-    if let Some(x) = mb.command_line() {
+    let cmdline = mb.command_line();
+    if let Some(x) = cmdline {
         boot::cmdline::process(unsafe{mem::transmute(x)});
     }
     // Process memory map and initialize allocators
     // First mark as reserved any common data
     boot::mark_image_mem();
-    // Now mark anything additional from multiboot specifically
+    // Now mark anything additional from multiboot specifically that we want to still have
+    // *after* we have enabled the heap later on
+    if let Some(x) = cmdline {
+        // Can unwrap as we already know the commandline is valid as we originally retrieved it from
+        // paddr_to_slice, which checked the KERNEL_WINDOW. We are recreating it, despite this being
+        // undefined behaviour, as we need to give a mutable slice to add_mem_owned.
+        unsafe{heap::add_used_mem(vspace::declare_slice(KERNEL_WINDOW, x.as_ptr() as usize, x.len()).unwrap())}
+    }
 
     // Add free memory
     if let Some(memiter) = mb.memory_regions() {
@@ -104,7 +113,7 @@ pub fn init(mb: usize) {
     heap::enable_heap();
 
     // Now that we have an allocator set the cmdline to preserve it
-    if let Some(x) = mb.command_line() {
+    if let Some(x) = cmdline {
         boot::cmdline::set(x);
     }
 }
