@@ -14,6 +14,7 @@
 #![feature(range_contains)]
 #![feature(align_offset)]
 #![feature(box_syntax)]
+#![feature(iterator_step_by)]
 #![no_std]
 #![no_main]
 #![feature(plugin)]
