@@ -25,6 +25,7 @@ make_flag!(TSC, get_feature_info, has_tsc);
 make_flag!(MSR, get_feature_info, has_msr);
 make_flag!(APIC, get_feature_info, has_apic);
 make_flag!(PAT, get_feature_info, has_pat);
+make_flag!(Page1GB, get_extended_function_info, has_1gib_pages);
 
 #[derive(Debug, Clone, Copy)]
 pub enum Missing {
@@ -76,22 +77,35 @@ impl Required {
     pub fn get_pat(&self) -> PAT {
         self.pat
     }
+    pub fn get_msr(&self) -> MSR {
+        self.msr
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
 pub struct Features {
     required: Required,
+    page1gb: Option<Page1GB>,
 }
 
 impl Features {
     pub const unsafe fn empty() -> Self {
-        Features { required: Required::empty()}
+        Features {
+            required: Required::empty(),
+            page1gb: None,
+        }
     }
     pub fn check() -> Result<Self, Missing> {
         let required = Required::check()?;
-        Ok(Self { required: required})
+        Ok(Self {
+            required: required,
+            page1gb: Page1GB::check(),
+        })
     }
     pub fn required(&self) -> Required {
         self.required
+    }
+    pub fn page1gb(&self) -> Option<Page1GB> {
+        self.page1gb
     }
 }

@@ -13,6 +13,7 @@
 #![feature(ptr_internals)]
 #![feature(range_contains)]
 #![feature(align_offset)]
+#![feature(box_syntax)]
 #![no_std]
 #![no_main]
 #![feature(plugin)]
@@ -65,6 +66,8 @@ pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
     if !cpu::init() {
         panic!("Failed to init cpu");
     }
+    print!(Info, "Switching to full kernel address space");
+    unsafe {vspace::make_kernel_address_space()};
     print!(Info, "arg1 is {:x}", arg1);
     print!(Panic, "Panic");
     print!(Error, "Error");
