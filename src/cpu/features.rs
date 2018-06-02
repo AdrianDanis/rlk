@@ -7,6 +7,7 @@ type Marker = PhantomData<()>;
 
 macro_rules! make_flag {
     ($name:ident, $set:ident, $flag:ident) => {
+    #[derive(Debug, Clone, Copy)]
     pub struct $name(Marker);
     impl $name {
         const fn new() -> Self {
@@ -35,17 +36,25 @@ pub enum Missing {
     PAT,
 }
 
-pub struct Required(LongMode, FPU, TSC, MSR, APIC, PAT);
+#[derive(Debug, Clone, Copy)]
+pub struct Required {
+    long: LongMode,
+    fpu: FPU,
+    tsc: TSC,
+    msr: MSR,
+    apic: APIC,
+    pat: PAT,
+}
 
 impl Required {
     const unsafe fn empty() -> Self {
         Required{
-            0: LongMode::new(),
-            1: FPU::new(),
-            2: TSC::new(),
-            3: MSR::new(),
-            4: APIC::new(),
-            5: PAT::new(),
+            long: LongMode::new(),
+            fpu: FPU::new(),
+            tsc: TSC::new(),
+            msr: MSR::new(),
+            apic: APIC::new(),
+            pat: PAT::new(),
         }
     }
     pub fn check() -> Result<Self, Missing> {
@@ -56,16 +65,20 @@ impl Required {
         let apic = APIC::check().ok_or(Missing::APIC)?;
         let pat = PAT::check().ok_or(Missing::PAT)?;
         Ok(Required {
-            0: lm,
-            1: fpu,
-            2: tsc,
-            3: msr,
-            4: apic,
-            5: pat,
+            long: lm,
+            fpu: fpu,
+            tsc: tsc,
+            msr: msr,
+            apic: apic,
+            pat: pat,
         })
+    }
+    pub fn get_pat(&self) -> PAT {
+        self.pat
     }
 }
 
+#[derive(Debug, Clone, Copy)]
 pub struct Features {
     required: Required,
 }
@@ -77,5 +90,8 @@ impl Features {
     pub fn check() -> Result<Self, Missing> {
         let required = Required::check()?;
         Ok(Self { required: required})
+    }
+    pub fn required(&self) -> Required {
+        self.required
     }
 }

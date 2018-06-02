@@ -62,6 +62,9 @@ pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
     }
     print!(Info, "CPU has minimal supported features");
     // TODO: printout feature list
+    if !cpu::init() {
+        panic!("Failed to init cpu");
+    }
     print!(Info, "arg1 is {:x}", arg1);
     print!(Panic, "Panic");
     print!(Error, "Error");
