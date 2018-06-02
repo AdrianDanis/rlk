@@ -53,8 +53,8 @@ impl Entry {
 type PAT = [Value; 8];
 
 pub fn init() {
-    let _pat: cpu::features::PAT = unsafe{CPU_FEATURES}.required().get_pat();
-    let _msr: cpu::features::MSR = unsafe{CPU_FEATURES}.required().get_msr();
+    let _pat: cpu::features::PAT = unsafe{CPU_FEATURES}.get_required().get_pat();
+    let _msr: cpu::features::MSR = unsafe{CPU_FEATURES}.get_required().get_msr();
     // read the current PAT
     let mut pat: PAT = unsafe{mem::transmute(rdmsr(IA32_PAT))};
     for mt in MemoryType::all().iter() {

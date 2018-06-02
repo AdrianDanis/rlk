@@ -26,6 +26,8 @@ make_flag!(MSR, get_feature_info, has_msr);
 make_flag!(APIC, get_feature_info, has_apic);
 make_flag!(PAT, get_feature_info, has_pat);
 make_flag!(Page1GB, get_extended_function_info, has_1gib_pages);
+make_flag!(PGE, get_feature_info, has_pge);
+make_flag!(NXE, get_extended_function_info, has_execute_disable);
 
 #[derive(Debug, Clone, Copy)]
 pub enum Missing {
@@ -86,6 +88,8 @@ impl Required {
 pub struct Features {
     required: Required,
     page1gb: Option<Page1GB>,
+    pge: Option<PGE>,
+    nxe: Option<NXE>,
 }
 
 impl Features {
@@ -93,6 +97,8 @@ impl Features {
         Features {
             required: Required::empty(),
             page1gb: None,
+            pge: None,
+            nxe: None,
         }
     }
     pub fn check() -> Result<Self, Missing> {
@@ -100,12 +106,20 @@ impl Features {
         Ok(Self {
             required: required,
             page1gb: Page1GB::check(),
+            pge: PGE::check(),
+            nxe: NXE::check(),
         })
     }
-    pub fn required(&self) -> Required {
+    pub fn get_required(&self) -> Required {
         self.required
     }
-    pub fn page1gb(&self) -> Option<Page1GB> {
+    pub fn get_page1gb(&self) -> Option<Page1GB> {
         self.page1gb
+    }
+    pub fn get_pge(&self) -> Option<PGE> {
+        self.pge
+    }
+    pub fn get_nxe(&self) -> Option<NXE> {
+        self.nxe
     }
 }

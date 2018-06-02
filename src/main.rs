@@ -56,14 +56,6 @@ pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
     } else {
         panic!("Unknown boot style");
     }
-    // Query CPU features
-    print!(Info, "Checking CPU for required and optional feature");
-    match cpu::Features::check() {
-        Err(e) => panic!("Failed to find required CPU features: {:?}", e),
-        Ok(features) => unsafe { state::CPU_FEATURES = features; },
-    }
-    print!(Info, "CPU has minimal supported features");
-    // TODO: printout feature list
     if !cpu::init() {
         panic!("Failed to init cpu");
     }

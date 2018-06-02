@@ -1,7 +1,6 @@
 //! Definitions for boot time vspaces
 
 use vspace::*;
-use util::units::GB;
 use util::range_contains;
 use core::ops::Range;
 

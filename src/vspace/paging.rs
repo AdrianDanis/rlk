@@ -1,14 +1,16 @@
 use x86::bits64::paging::*;
-use cpu::features::{Page1GB, NXE, Global};
+use cpu::features::{Page1GB, NXE, PGE};
 use state::CPU_FEATURES;
 use util::units::GB;
 use vspace::*;
+use cpu::MemoryType;
 
 enum Rights {
     Read,
     ReadWrite,
 }
 
+#[derive(Debug, Clone, Copy)]
 enum PageSize {
     // 4KiB
     Small,
@@ -18,15 +20,16 @@ enum PageSize {
     Huge(Page1GB),
 }
 
+#[derive(Debug, Clone, Copy)]
 struct PageMapping {
     vaddr: usize,
     paddr: usize,
     write: bool,
     user: bool,
     nxe: Option<NXE>,
-    global: Option<Global>,
+    pge: Option<PGE>,
     mt: MemoryType,
-    size: PageSize;
+    size: PageSize,
 }
 
 struct PageMappingBuilder {
@@ -42,7 +45,7 @@ impl PageMappingBuilder {
                 write: false,
                 user: false,
                 nxe: None,
-                global: None,
+                pge: None,
                 mt: MemoryType::WB,
                 size: size,
             }
@@ -50,12 +53,12 @@ impl PageMappingBuilder {
     }
     pub fn user(mut self) -> Self {
         self.internal.user = true;
-        self.internal.global = None;
+        self.internal.pge = None;
         self
     }
     pub fn kernel(mut self) -> Self {
         self.internal.user = false;
-        self.internal.global = unsafe{CPU_FEATURES}.global();
+        self.internal.pge = unsafe{CPU_FEATURES}.get_pge();
         self
     }
     pub fn write(mut self) -> Self {
@@ -67,7 +70,7 @@ impl PageMappingBuilder {
         self
     }
     pub fn no_execute(mut self) -> Self {
-        self.internal.nxe = unsafe{CPU_FEATURES.get_nxe()}};
+        self.internal.nxe = unsafe{CPU_FEATURES}.get_nxe();
         self
     }
     pub fn executable(mut self) -> Self {
@@ -111,20 +114,24 @@ impl AS {
     }
     fn map_kernel_window(&mut self) {
         // currently assume 1gb pages
-        let _gb: Page1GB = unsafe{CPU_FEATURES}.page1gb().expect("Require 1GB page support");
+        let page1gb: Page1GB = unsafe{CPU_FEATURES}.get_page1gb().expect("Require 1GB page support");
         // create the guaranteed kernel mappings
         for gb in KERNEL_BASE_DEFAULT_RANGE.step_by(GB) {
             // as this is not the kernel image, no need for executable
-            let mapping = PageMappingBuilder::new(gb, gb - (KERNEL_BASE - KERNEL_PHYS_BASE), PageSize::Huge(Page1GB)).kernel().no_execute().write().finish();
-            self.ensure_mapping_entry(mapping);
-            self.raw_map_page(mapping);
+            let mapping = PageMappingBuilder::new(gb, gb - (KERNEL_BASE - KERNEL_PHYS_BASE), PageSize::Huge(page1gb)).kernel().no_execute().write().finish();
+            unsafe {
+                self.ensure_mapping_entry(mapping);
+                self.raw_map_page(mapping);
+            }
         }
         // map in the kernel image
         for gb in KERNEL_IMAGE_RANGE.step_by(GB) {
             // unfortunately the data and bss is also here so we need this both executable and writable
-            let mapping = PageMappingBuilder::new(gb, gb - (KERNEL_IMAGE_BASE - KERNEL_PHYS_BASE), PageSize::Huge(Page1GB)).kernel().executable().write().finish();
-            self.ensure_mapping_entry(mapping);
-            self.raw_map_page(mapping);
+            let mapping = PageMappingBuilder::new(gb, gb - (KERNEL_IMAGE_BASE - KERNEL_PHYS_BASE), PageSize::Huge(page1gb)).kernel().executable().write().finish();
+            unsafe {
+                self.ensure_mapping_entry(mapping);
+                self.raw_map_page(mapping);
+            }
         }
     }
 }
