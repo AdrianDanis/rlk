@@ -1,7 +1,7 @@
 //! Define generic IO traits and implementations
 
 use core::marker::PhantomData;
-use x86::io;
+use x86::shared::io;
 
 pub trait Io {
     type Item: Copy;

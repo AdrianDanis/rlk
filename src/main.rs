@@ -26,6 +26,7 @@ extern crate bitflags;
 #[macro_use]
 extern crate bitfield;
 extern crate alloc;
+extern crate raw_cpuid;
 
 #[macro_use]
 pub mod decls;
@@ -40,6 +41,7 @@ pub mod vspace;
 pub mod heap;
 pub mod state;
 pub mod ip_collections;
+pub mod cpu;
 
 /// Allocator has to be defined in the root of the crate so we extern it here and actually declare in heap
 #[global_allocator]
@@ -52,6 +54,14 @@ pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
     } else {
         panic!("Unknown boot style");
     }
+    // Query CPU features
+    print!(Info, "Checking CPU for required and optional feature");
+    match cpu::Features::check() {
+        Err(e) => panic!("Failed to find required CPU features: {:?}", e),
+        Ok(features) => unsafe { state::CPU_FEATURES = features; },
+    }
+    print!(Info, "CPU has minimal supported features");
+    // TODO: printout feature list
     print!(Info, "arg1 is {:x}", arg1);
     print!(Panic, "Panic");
     print!(Error, "Error");

@@ -37,6 +37,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "raw-cpuid"
+version = "3.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+dependencies = [
+ "bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "cc 1.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
+]
+
+[[package]]
 name = "rlibc"
 version = "1.0.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -50,15 +59,17 @@ dependencies = [
  "cc 1.0.10 (registry+https://github.com/rust-lang/crates.io-index)",
  "interpolate_idents 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)",
  "multiboot 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)",
+ "raw-cpuid 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "rlibc 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)",
- "x86 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)",
+ "x86 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
 [[package]]
 name = "x86"
-version = "0.7.2"
+version = "0.9.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 dependencies = [
+ "bitflags 0.7.0 (registry+https://github.com/rust-lang/crates.io-index)",
  "raw-cpuid 2.0.2 (registry+https://github.com/rust-lang/crates.io-index)",
 ]
 
@@ -70,5 +81,6 @@ dependencies = [
 "checksum interpolate_idents 0.2.4 (registry+https://github.com/rust-lang/crates.io-index)" = "8c038526b1556151b78f71b3e4cb107cf58c4dfc426a64a398c61f76a42a4e08"
 "checksum multiboot 0.3.0 (registry+https://github.com/rust-lang/crates.io-index)" = "745e351d4f128ea9e266fe2dd04a1bd7349c60441d45ec8677520bae08e25d43"
 "checksum raw-cpuid 2.0.2 (registry+https://github.com/rust-lang/crates.io-index)" = "13b844e4049605ff38fed943f5c7b2c691fad68d9d5bf074d2720554c4e48246"
+"checksum raw-cpuid 3.1.0 (registry+https://github.com/rust-lang/crates.io-index)" = "233ec1847057cf4d4591a0d76908aa12812140b11ea7d7d05b4c38cadb069c31"
 "checksum rlibc 1.0.0 (registry+https://github.com/rust-lang/crates.io-index)" = "fc874b127765f014d792f16763a81245ab80500e2ad921ed4ee9e82481ee08fe"
-"checksum x86 0.7.2 (registry+https://github.com/rust-lang/crates.io-index)" = "127728f29f7cfb243a9264c80fc7e57bd1abb3ab015850b05736efda2abe5859"
+"checksum x86 0.9.0 (registry+https://github.com/rust-lang/crates.io-index)" = "178718d3f2c7dd98d44f8e353b0ccc8c89b2e81e31e5eed93e7fdf5f36db7a13"

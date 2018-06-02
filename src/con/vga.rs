@@ -2,7 +2,7 @@
 
 use core::fmt;
 use core::{ptr, intrinsics};
-use x86::io;
+use x86::shared::io;
 
 use super::{Con, EarlyCon, V};
 
