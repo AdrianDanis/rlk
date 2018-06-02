@@ -16,6 +16,24 @@ enum Value {
 }
 
 #[derive(Debug, Clone, Copy)]
+pub struct Index(u32);
+
+impl Index {
+    fn index(&self) -> usize {
+        self.0 as usize
+    }
+    pub fn pwt(&self) -> bool {
+        (self.0 % 2) == 1
+    }
+    pub fn pcd(&self) -> bool {
+        ((self.0 / 2) % 2) == 0
+    }
+    pub fn pat(&self) -> bool {
+        self.0 / 4 == 1
+    }
+}
+
+#[derive(Debug, Clone, Copy)]
 pub struct Entry(MemoryType);
 
 impl From<MemoryType> for Entry {
@@ -26,16 +44,16 @@ impl From<MemoryType> for Entry {
 
 impl Entry {
     // TODO: index should be a struct of its own to allow conversions to bits in paging structures
-    fn index(&self) -> usize {
+    pub fn index(&self) -> Index {
         // Keep the first 4 entries the default as specified in Intel manual
         // so our current page tables keep working
         match self.0 {
-            MemoryType::WB => 0,
-            MemoryType::WT => 1,
-            MemoryType::UC => 2,
-            MemoryType::StrongUC => 3,
-            MemoryType::WC => 4,
-            MemoryType::WP => 5,
+            MemoryType::WB => Index{0:0},
+            MemoryType::WT => Index{0:1},
+            MemoryType::UC => Index{0:2},
+            MemoryType::StrongUC => Index{0:3},
+            MemoryType::WC => Index{0:4},
+            MemoryType::WP => Index{0:5},
         }
     }
     fn value(&self) -> Value {
@@ -59,7 +77,7 @@ pub fn init() {
     let mut pat: PAT = unsafe{mem::transmute(rdmsr(IA32_PAT))};
     for mt in MemoryType::all().iter() {
         let e = Entry::from(*mt);
-        pat[e.index()] = e.value();
+        pat[e.index().index()] = e.value();
     }
     unsafe{wrmsr(IA32_PAT, mem::transmute(pat))};
     print!(Trace, "Initialized PAT");

@@ -46,7 +46,6 @@ enum StoredMemRegion {
     /// Memory does not fit in the initial kernel window and should be added later, stored by physical address
     HIGH(Range<usize>),
     /// Memory is used during boot but can be used after that
-    #[allow(dead_code)]
     BOOT(&'static mut [u8]),
 }
 
@@ -79,6 +78,15 @@ pub fn add_used_mem(mem: &'static mut [u8]) {
     print!(Info, "Marked region {:x} as initially allocated", display);
 }
 
+/// Mark a region of virtual memory as used during boot
+pub fn add_boot_mem(mem: &'static mut [u8]) {
+    let display = PrintRange::<usize>::from(mem as &[u8]);
+    if !add_mem_region(StoredMemRegion::BOOT(mem)) {
+        panic!("Failed to record boot memory {:x}. Increase MAX_USED_MEM", display);
+    }
+    print!(Info, "Marked region {:x} as boot memory", display);
+}
+
 /// Add a region of memory to the heap
 ///
 /// This works by passing ownership of a slice of memory to the allocator. As a result this
@@ -108,7 +116,7 @@ pub fn add_mem_owned(mem: &'static mut [u8]) {
 ///
 /// Will panic if the memory provided is not deemed valid according to the current `KERNEL_WINDOW`
 pub unsafe fn add_mem(range: Range<usize>) {
-    for region in MEM_REGIONS.iter().filter_map(|x| x.as_ref().and_then(|x| match x { StoredMemRegion::USED(range) => Some(range), _ => None })) {
+    for region in MEM_REGIONS.iter().filter_map(|x| x.as_ref().and_then(|x| match x { StoredMemRegion::USED(range) | StoredMemRegion::BOOT(range) => Some(range), _ => None })) {
         let start = region.as_ptr() as usize;
         let end = start + region.len();
         if range.end <= start || range.start >= end {

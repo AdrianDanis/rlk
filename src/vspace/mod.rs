@@ -6,7 +6,7 @@ mod paging;
 pub use self::paging::make_kernel_address_space;
 pub use self::window::{Window, declare_obj, declare_slice};
 
-use util::units::GB;
+use util::units::{MB, GB};
 use core::ops::Range;
 
 /// Start of kernel window
@@ -37,3 +37,9 @@ pub const KERNEL_IMAGE_RANGE: Range<usize> = KERNEL_IMAGE_BASE .. KERNEL_IMAGE_B
 
 /// Physical address of KERNEL_BASE and KERNEL_IMAGE_BASE
 pub const KERNEL_PHYS_BASE: usize = 0x0;
+
+/// Physical address the kernel is initially loaded to
+pub const KERNEL_PADDR_LOAD: usize = MB;
+
+/// Kernel PCID
+pub const KERNEL_PCID: u16 = 1;
