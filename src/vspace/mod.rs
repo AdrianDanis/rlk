@@ -35,6 +35,15 @@ pub const KERNEL_IMAGE_BASE: usize = 0xffffffff80000000;
 /// The kernel image is given a 1GB slot to live in. This is purely to hold the kernel binary
 pub const KERNEL_IMAGE_RANGE: Range<usize> = KERNEL_IMAGE_BASE .. KERNEL_IMAGE_BASE + GB;
 
+/// Kernel dynamic virtual address range
+///
+/// This address range contains dynamically allocated non contiguous vaddr->paddr ranges.
+/// Used for kernel devices, stack, etc
+///
+/// Note that we cannot actually define the full range that we want due to overflow, so we arbitrarily
+/// make this range 1 byte smaller, effectively forbidding the last page from being used
+pub const KERNEL_DYNAMIC_RANGE: Range<usize> = KERNEL_IMAGE_BASE + GB..KERNEL_IMAGE_BASE + (2 * GB - 1);
+
 /// Physical address of KERNEL_BASE and KERNEL_IMAGE_BASE
 pub const KERNEL_PHYS_BASE: usize = 0x0;
 
