@@ -44,6 +44,10 @@ pub unsafe trait Window {
     /// Compared to `paddr_to_vaddr` this ensures that the final virtual address
     /// range is contiguous
     fn paddr_to_vaddr_range(&self, range:Range<usize>) -> Option<Range<usize>>;
+    /// Request an unused portion of the Window
+    fn alloc_unused(&mut self, size: usize, align: usize) -> Option<usize> {
+        None
+    }
 }
 
 /// Declares that an object exists at this virtual address
