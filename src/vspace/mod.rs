@@ -1,11 +1,12 @@
 //! General vspace definitions
 
-mod window;
 mod paging;
 mod translation;
+mod allocation;
 
 pub use self::paging::make_kernel_address_space;
 pub use self::translation::Translation;
+pub use self::allocation::Allocation;
 
 use util::units::{MB, GB};
 use core::ops::Range;

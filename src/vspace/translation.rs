@@ -1,4 +1,4 @@
-// Interface for paddr<->vaddr translation
+//! Interface for paddr<->vaddr translation
 
 use core::ops::Range;
 
