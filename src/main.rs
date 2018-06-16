@@ -14,6 +14,8 @@
 #![feature(range_contains)]
 #![feature(align_offset)]
 #![feature(box_syntax)]
+#![feature(panic_implementation)]
+#![feature(panic_info_message)]
 #![feature(iterator_step_by)]
 #![no_std]
 #![no_main]

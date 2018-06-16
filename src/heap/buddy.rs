@@ -1,7 +1,6 @@
 //! Buddy memory allocator
 
 use core::cmp::{min, Ordering};
-use core::alloc::Opaque;
 use core::slice;
 use util::log2_usize;
 use boot::cmdline::option_is_true;
@@ -92,7 +91,7 @@ impl Buddy {
             }
         }
     }
-    pub fn alloc(&mut self, mut bits: u32) -> *mut Opaque {
+    pub fn alloc(&mut self, mut bits: u32) -> *mut u8 {
         if bits < MIN_ORDER {
             bits = MIN_ORDER;
         }
@@ -106,11 +105,11 @@ impl Buddy {
             self.fill_level(bits);
         }
         match self.pools[index].pop_front() {
-            None => 0 as *mut Opaque,
+            None => 0 as *mut u8,
             Some((slice, node)) => {
                 assert!(node.addr == slice.as_ptr() as usize);
                 assert!(node.order == bits);
-                slice.as_mut_ptr() as *mut Opaque
+                slice.as_mut_ptr() as *mut u8
             },
         }
     }

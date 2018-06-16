@@ -2,7 +2,7 @@
 
 mod buddy;
 
-use core::alloc::{Layout, Opaque};
+use core::alloc::Layout;
 use alloc::alloc::GlobalAlloc;
 use core::ops::Range;
 use state::KERNEL_WINDOW;
@@ -12,15 +12,15 @@ use core::cmp::max;
 use vspace::declare_slice;
 
 pub struct AllocProxy {
-    alloc_fn: unsafe fn(Layout) -> *mut Opaque,
-    dealloc_fn: unsafe fn(*mut Opaque, Layout),
+    alloc_fn: unsafe fn(Layout) -> *mut u8,
+    dealloc_fn: unsafe fn(*mut u8, Layout),
 }
 
-unsafe fn alloc_error(_layout: Layout) -> *mut Opaque {
+unsafe fn alloc_error(_layout: Layout) -> *mut u8 {
     panic!("Allocation before allocator is set")
 }
 
-unsafe fn dealloc_error(_ptr: *mut Opaque, _layout: Layout) {
+unsafe fn dealloc_error(_ptr: *mut u8, _layout: Layout) {
     panic!("Deallocation before allocator is set")
 }
 
@@ -31,10 +31,10 @@ impl AllocProxy {
 }
 
 unsafe impl GlobalAlloc for AllocProxy {
-    unsafe fn alloc(&self, layout: Layout) -> *mut Opaque {
+    unsafe fn alloc(&self, layout: Layout) -> *mut u8 {
         (self.alloc_fn)(layout)
     }
-    unsafe fn dealloc(&self, ptr: *mut Opaque, layout: Layout) {
+    unsafe fn dealloc(&self, ptr: *mut u8, layout: Layout) {
         (self.dealloc_fn)(ptr, layout)
     }
 }
@@ -141,7 +141,7 @@ pub unsafe fn add_mem(range: Range<usize>) {
     }
 }
 
-unsafe fn heap_alloc(layout: Layout) -> *mut Opaque {
+unsafe fn heap_alloc(layout: Layout) -> *mut u8 {
     let size = max(layout.align(), layout.size());
     match size.checked_next_power_of_two() {
         None => panic!("No power of two size for allocation"),
@@ -155,7 +155,7 @@ unsafe fn heap_alloc(layout: Layout) -> *mut Opaque {
     }
 }
 
-unsafe fn heap_dealloc(_ptr: *mut Opaque, _layout: Layout) {
+unsafe fn heap_dealloc(_ptr: *mut u8, _layout: Layout) {
     unimplemented!()
 }
 

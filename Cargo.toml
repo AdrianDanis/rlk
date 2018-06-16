@@ -11,7 +11,7 @@ cc = "1.0"
 
 [dependencies]
 rlibc = "1.0.0"
-interpolate_idents = "0.2.4"
+interpolate_idents = { path = "../interpolate_idents" }
 multiboot = "0.3.0"
 bitflags = "1.0.3"
 bitfield = "0.12.2"

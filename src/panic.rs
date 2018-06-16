@@ -1,4 +1,4 @@
-use core;
+use core::panic::PanicInfo;
 
 use drivers::io::{Io, PortIO};
 
@@ -12,15 +12,12 @@ pub unsafe fn reboot() -> ! {
     loop {}
 }
 
-#[lang = "panic_fmt"]
+#[panic_implementation]
 #[no_mangle]
-pub extern fn rust_begin_panic(msg: core::fmt::Arguments,
-                               file: &'static str,
-                               line: u32,
-                               column: u32) -> ! {
+pub extern fn panic(info: &PanicInfo) -> ! {
     // TODO: As we try to print! in panic (and print! itself may panic) we should
     // attempt to detect a re-entrant panic and skip to something else
-    print!(Panic, "Panic at {} {}:{}: {}", file, line, column, msg);
+    print!(Panic, "Panic at {:?}: {:?} {:?}", info.location(), info.payload(), info.message());
     // No power management yet for power off, so try and trigger a reset instead
     unsafe {reboot()}
 }
