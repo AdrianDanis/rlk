@@ -25,6 +25,15 @@ unsafe impl Translation for Init {
     }
 }
 
+unsafe impl Allocation for Init {
+    fn alloc(&mut self, size: usize, align: usize) -> Option<*mut u8> {
+        None
+    }
+}
+
+unsafe impl VSpace for Init {
+}
+
 impl Init {
     /// Construct the Init vspace window
     pub const fn make() -> Self {

@@ -5,7 +5,7 @@ pub mod state;
 
 use state::KERNEL_WINDOW;
 use heap;
-use vspace::{declare_slice, KERNEL_PADDR_LOAD};
+use vspace::*;
 
 extern {
     static kernel_image_start: usize;

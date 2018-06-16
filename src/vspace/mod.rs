@@ -5,13 +5,15 @@ mod translation;
 mod allocation;
 
 pub use self::paging::make_kernel_address_space;
-pub use self::translation::Translation;
+pub use self::translation::{AsTranslation, Translation};
 pub use self::allocation::Allocation;
 
 use util::units::{MB, GB};
 use core::ops::Range;
 use core::slice;
 use core::mem::{align_of, size_of, transmute};
+
+pub unsafe trait VSpace: Translation + Allocation {}
 
 /// Start of kernel window
 ///
@@ -70,16 +72,16 @@ pub const KERNEL_PCID: u16 = 1;
 /// This is unsafe as even if the range is valid it still requires that a correctly
 /// construct T lives inside that virtual address range and that you have not already
 /// constructed an object in that range.
-pub unsafe fn declare_obj<'a, T>(window: &'a Translation, base_vaddr: usize) -> Option<&'static mut T> {
-    if (base_vaddr % align_of::<T>()) == 0 && window.range_valid(base_vaddr..base_vaddr + size_of::<T>()) {
+pub unsafe fn declare_obj<'a, T, W: AsTranslation + ?Sized>(window: &'a W, base_vaddr: usize) -> Option<&'static mut T> {
+    if (base_vaddr % align_of::<T>()) == 0 && window.as_translation_ref().range_valid(base_vaddr..base_vaddr + size_of::<T>()) {
         Some(transmute(base_vaddr as *mut T))
     } else {
         None
     }
 }
 
-pub unsafe fn declare_slice<'a, T>(window: &'a Translation, base_vaddr: usize, items: usize) -> Option<&'static mut [T]> {
-    if (base_vaddr % align_of::<T>()) == 0 && window.range_valid(base_vaddr..base_vaddr + size_of::<T>() * items) {
+pub unsafe fn declare_slice<'a, T, W: AsTranslation + ?Sized>(window: &'a W, base_vaddr: usize, items: usize) -> Option<&'static mut [T]> {
+    if (base_vaddr % align_of::<T>()) == 0 && window.as_translation_ref().range_valid(base_vaddr..base_vaddr + size_of::<T>() * items) {
         Some(slice::from_raw_parts_mut(base_vaddr as *mut T, items))
     } else {
         None

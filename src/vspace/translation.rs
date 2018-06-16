@@ -2,6 +2,10 @@
 
 use core::ops::Range;
 
+pub trait AsTranslation {
+    fn as_translation_ref(&self) -> &Translation;
+}
+
 // TODO: paddr and vaddr types?
 /// Generic trait for defining paddr<->vaddr translation
 ///
@@ -12,7 +16,7 @@ use core::ops::Range;
 /// conversations are expected to be stable such that vaddr->paddr->vaddr->paddr->vaddr
 /// will keep producing the same paddr and vaddr (as long as paddr->vaddr is defined to
 /// ever produce anything)
-pub unsafe trait Translation {
+pub unsafe trait Translation: AsTranslation {
     /// Check if a virtuall address range is valid
     ///
     /// It is a requirement that iff it has a vaddr->paddr translation
@@ -42,4 +46,10 @@ pub unsafe trait Translation {
     /// Compared to `paddr_to_vaddr` this ensures that the final virtual address
     /// range is contiguous
     fn paddr_to_vaddr_range(&self, range:Range<usize>) -> Option<Range<usize>>;
+}
+
+impl<T: Translation> AsTranslation for T {
+    fn as_translation_ref(&self) -> &Translation {
+        self
+    }
 }
