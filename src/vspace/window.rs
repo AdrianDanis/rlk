@@ -45,7 +45,7 @@ pub unsafe trait Window {
     /// range is contiguous
     fn paddr_to_vaddr_range(&self, range:Range<usize>) -> Option<Range<usize>>;
     /// Request an unused portion of the Window
-    fn alloc_unused(&mut self, size: usize, align: usize) -> Option<usize> {
+    fn alloc_unused(&mut self, _size: usize, _align: usize) -> Option<usize> {
         None
     }
 }

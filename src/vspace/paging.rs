@@ -166,8 +166,8 @@ impl PDPTWrap {
         if !entry.is_present() {
             panic!("No PDPT entry in PML4");
         }
-        let vaddr = unsafe{KERNEL_WINDOW.paddr_to_vaddr(entry.get_address().as_u64() as usize)};
-        unsafe{mem::transmute(KERNEL_WINDOW.paddr_to_vaddr(entry.get_address().as_u64() as usize).unwrap() as *mut PDPTWrap)}
+        let vaddr = KERNEL_WINDOW.paddr_to_vaddr(entry.get_address().as_u64() as usize).unwrap();
+        mem::transmute(vaddr as *mut PDPTWrap)
     }
 }
 

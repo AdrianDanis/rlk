@@ -8,7 +8,6 @@
 #![feature(pattern)]
 #![feature(associated_type_defaults)]
 #![feature(alloc)]
-#![feature(global_allocator)]
 #![feature(allocator_api)]
 #![feature(ptr_internals)]
 #![feature(range_contains)]
