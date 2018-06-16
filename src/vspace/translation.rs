@@ -2,6 +2,11 @@
 
 use core::ops::Range;
 
+/// Upcast trait for Translation
+///
+/// This works around a limitation (https://github.com/rust-lang/rust/issues/5665) in rust
+/// that prevents upcasting a trait object to another. Specifically we want this so that
+/// we can go from an &VSpace (which is defined to implement Translation) to an &Translation
 pub trait AsTranslation {
     fn as_translation_ref(&self) -> &Translation;
 }
