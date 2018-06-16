@@ -1,14 +1,14 @@
 //! Global kernel state
 
 use boot;
-use vspace::Window;
+use vspace::Translation;
 use cpu::Features;
 
 /// Kernel virtual address window definition
 ///
 /// Starts as the low window on boot. This is mostly needed by early boot code and allocator
 /// setup.
-pub static mut KERNEL_WINDOW: &'static Window = &boot::vspace::INIT_WINDOW;
+pub static mut KERNEL_WINDOW: &'static Translation = &boot::vspace::INIT_WINDOW;
 
 /// Available CPU features
 ///

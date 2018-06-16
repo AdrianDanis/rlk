@@ -6,7 +6,7 @@ use core::ops::Range;
 
 pub struct Init;
 
-unsafe impl Window for Init {
+unsafe impl Translation for Init {
     fn range_valid(&self, range: Range<usize>) -> bool {
         range_contains(&KERNEL_BASE_DEFAULT_RANGE, &range) || range_contains(&KERNEL_IMAGE_RANGE, &range)
     }
