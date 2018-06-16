@@ -17,7 +17,11 @@ pub unsafe fn reboot() -> ! {
 pub extern fn panic(info: &PanicInfo) -> ! {
     // TODO: As we try to print! in panic (and print! itself may panic) we should
     // attempt to detect a re-entrant panic and skip to something else
-    print!(Panic, "Panic at {:?}: {:?} {:?}", info.location(), info.payload(), info.message());
+    if let (Some(location), Some(message)) = (info.location(), info.message()) {
+        print!(Panic, "Panic at {} {}:{} {}", location.file(), location.line(), location.column(), message);
+    } else {
+        print!(Panic, "Panic at {:?} with {:?}", info.location(), info.message());
+    }
     // No power management yet for power off, so try and trigger a reset instead
     unsafe {reboot()}
 }
