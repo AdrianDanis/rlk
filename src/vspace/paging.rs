@@ -4,7 +4,6 @@ use cpu::features::{Page1GB, NXE, PGE};
 use state::{CPU_FEATURES, KERNEL_WINDOW};
 use util::units::GB;
 use vspace::*;
-use cpu;
 use cpu::MemoryType;
 use alloc::boxed::Box;
 use core::mem;
@@ -172,7 +171,7 @@ impl PDPTWrap {
 }
 
 #[repr(C, packed)]
-struct AS(PML4);
+pub struct AS(PML4);
 
 impl AS {
     /// Maps a page without performing consistency updates
@@ -221,7 +220,7 @@ impl AS {
         }
         unimplemented!()
     }
-    fn map_kernel_window(&mut self) {
+    pub unsafe fn map_kernel_window(&mut self) {
         // currently assume 1gb pages
         let page1gb: Page1GB = unsafe{CPU_FEATURES}.get_page1gb().expect("Require 1GB page support");
         // create the guaranteed kernel mappings
@@ -249,19 +248,4 @@ impl Default for AS {
     fn default() -> AS {
         AS{0: [PML4Entry::empty(); 512]}
     }
-}
-
-pub unsafe fn make_kernel_address_space() {
-    // create kernel address space
-    let kernel_as = Box::into_raw(box AS::default());
-    (*kernel_as).map_kernel_window();
-    // inform any early cons that we are switching
-    // enable address space
-    let kernel_as_paddr = KERNEL_WINDOW.vaddr_to_paddr(kernel_as as usize).unwrap();
-    // Load CR3, this will invalidate all our translation information so there is nothing else
-    // we need to do
-    cpu::load_cr3(kernel_as_paddr, KERNEL_PCID, false);
-    // update the KERNEL_WINDOW
-    // tell the heap that we can use all the memory now?
-    unimplemented!()
 }
