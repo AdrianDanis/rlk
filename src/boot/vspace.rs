@@ -26,7 +26,13 @@ unsafe impl Translation for Init {
 }
 
 unsafe impl Allocation for Init {
-    fn alloc(&mut self, size: usize, align: usize) -> Option<*mut u8> {
+    fn alloc(&mut self, _size: usize, _align: usize) -> Option<*mut u8> {
+        None
+    }
+    fn reserve(&mut self, _size: usize, _align: usize) -> Option<usize> {
+        None
+    }
+    fn fill(&mut self, _base: usize, _size: usize) -> Option<*mut u8> {
         None
     }
 }
