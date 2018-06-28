@@ -3,12 +3,12 @@
 mod paging;
 mod translation;
 mod allocation;
-mod vspace;
+mod kernel;
 
 pub use self::paging::AS;
 pub use self::translation::{AsTranslation, Translation};
 pub use self::allocation::Allocation;
-pub use self::vspace::make_kernel_address_space;
+pub use self::kernel::make_kernel_address_space;
 
 use util::units::{MB, GB};
 use core::ops::Range;
