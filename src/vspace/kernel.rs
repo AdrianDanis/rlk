@@ -15,6 +15,32 @@ impl Default for KernelVSpace {
     }
 }
 
+unsafe impl Allocation for KernelVSpace {
+    fn alloc(&mut self, size: usize, align: usize) -> Option<*mut u8> {
+        unimplemented!()
+    }
+    fn reserve(&mut self, size: usize, align: usize) -> Option<usize> {
+        unimplemented!()
+    }
+    fn fill(&mut self, base: usize, size: usize) -> Option<*mut u8> {
+        unimplemented!()
+    }
+}
+
+unsafe impl Translation for KernelVSpace {
+    fn range_valid(&self, range: Range<usize>) -> bool {
+        unimplemented!()
+    }
+    fn vaddr_to_paddr_range(&self, range: Range<usize>) -> Option<Range<usize>> {
+        unimplemented!()
+    }
+    fn paddr_to_vaddr_range(&self, range:Range<usize>) -> Option<Range<usize>> {
+        unimplemented!()
+    }
+}
+
+unsafe impl VSpace for KernelVSpace {}
+
 impl KernelVSpace {
     unsafe fn map_kernel_window(&mut self) {
         // currently assume 1gb pages
@@ -51,6 +77,7 @@ pub unsafe fn make_kernel_address_space() {
     // we need to do
     cpu::load_cr3(kernel_as_paddr, KERNEL_PCID, false);
     // update the KERNEL_WINDOW
+    KERNEL_WINDOW = kernel_as;
     // tell the heap that we can use all the memory now?
     unimplemented!()
 }
