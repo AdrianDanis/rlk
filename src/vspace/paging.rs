@@ -148,8 +148,9 @@ impl PageMappingBuilder {
     }
 }
 
-#[repr(C, packed)]
+#[repr(C, align(4096))]
 struct PDPTWrap(PDPT);
+assert_eq_size!(pdpt_page_size; PDPTWrap, [u8; 4096]);
 
 impl Default for PDPTWrap {
     fn default() -> PDPTWrap {
@@ -170,8 +171,9 @@ impl PDPTWrap {
     }
 }
 
-#[repr(C, packed)]
+#[repr(C, align(4096))]
 pub struct AS(PML4);
+assert_eq_size!(as_page_size; AS, [u8; 4096]);
 
 impl AS {
     /// Maps a page without performing consistency updates
@@ -185,6 +187,7 @@ impl AS {
     ///
     /// If the desired virtual address is already marked as present then 
     unsafe fn raw_map_page(&mut self, mapping: PageMapping) {
+
         let pml4ent = &self.0[pml4_index(VAddr::from_usize(mapping.vaddr))];
         let pdpt = PDPTWrap::from_entry(*pml4ent);
         let pdptent = &mut pdpt.0[pdpt_index(VAddr::from_usize(mapping.vaddr))];

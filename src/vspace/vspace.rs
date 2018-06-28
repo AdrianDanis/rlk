@@ -7,7 +7,6 @@ use cpu;
 
 pub unsafe fn make_kernel_address_space() {
     // create kernel address space
-    // TODO: nothing has guaranteed that our AS (read: PML4) is a page aligned allocation
     let kernel_as = Box::into_raw(box AS::default());
     (*kernel_as).map_kernel_window();
     // TODO: inform any early cons that we are switching

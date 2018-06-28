@@ -30,6 +30,8 @@ extern crate bitflags;
 extern crate bitfield;
 extern crate alloc;
 extern crate raw_cpuid;
+#[macro_use]
+extern crate static_assertions;
 
 #[macro_use]
 pub mod decls;
