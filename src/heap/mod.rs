@@ -160,8 +160,15 @@ unsafe fn heap_dealloc(_ptr: *mut u8, _layout: Layout) {
 }
 
 pub fn enable_heap() {
-    print!(Debug, "Enabling kernel heap");
     unsafe {
+        // Count memory still in boot or high mem
+        let boot_mem = MEM_REGIONS.iter().filter_map(|x| x.as_ref().and_then(|x|
+                if let StoredMemRegion::BOOT(slice) = x { Some(slice.len()) } else { None }
+            )).fold(0, |acc, x| acc + x);
+        let high_mem = MEM_REGIONS.iter().filter_map(|x| x.as_ref().and_then(|x|
+                if let StoredMemRegion::HIGH(range) = x { Some(range.end - range.start) } else { None }
+            )).fold(0, |acc, x| acc + x);
+        print!(Debug, "Enabling kernel heap: Still have {} bytes in boot mem and {} bytes in high mem", boot_mem ,high_mem);
         ALLOCATOR.alloc_fn = heap_alloc;
         ALLOCATOR.dealloc_fn = heap_dealloc;
     }
