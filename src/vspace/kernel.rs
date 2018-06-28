@@ -42,12 +42,11 @@ impl KernelVSpace {
 
 pub unsafe fn make_kernel_address_space() {
     // create kernel address space
-    let kernel_as = Box::into_raw(box KernelVSpace::default());
-    (*kernel_as).map_kernel_window();
+    let kernel_as = Box::leak(box KernelVSpace::default());
+    kernel_as.map_kernel_window();
     // TODO: inform any early cons that we are switching
     // enable address space
-    // TODO: pull out 'AS' portion of kernel_as
-    let kernel_as_paddr = KERNEL_WINDOW.vaddr_to_paddr(kernel_as as usize).unwrap();
+    let kernel_as_paddr = KERNEL_WINDOW.vaddr_to_paddr(&kernel_as.0 as *const AS as usize).unwrap();
     // Load CR3, this will invalidate all our translation information so there is nothing else
     // we need to do
     cpu::load_cr3(kernel_as_paddr, KERNEL_PCID, false);
