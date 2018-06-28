@@ -6,6 +6,7 @@ use cpu::features::Page1GB;
 use state::{CPU_FEATURES, KERNEL_WINDOW};
 use alloc::boxed::Box;
 use cpu;
+use heap;
 
 struct KernelVSpace(AS);
 
@@ -79,6 +80,7 @@ pub unsafe fn make_kernel_address_space() {
     // update the KERNEL_WINDOW
     KERNEL_WINDOW = kernel_as;
     // tell the heap that we can use all the memory now?
+    heap::enable_high_mem();
     unimplemented!()
 }
 

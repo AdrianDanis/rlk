@@ -174,6 +174,30 @@ pub fn enable_heap() {
     }
 }
 
+unsafe fn try_add_mem_physical(range: Range<usize>) -> bool {
+    if let Some(vaddr) = KERNEL_WINDOW.paddr_to_vaddr_range(range.clone()) {
+        add_mem(vaddr);
+        true
+    } else {
+        false
+    }
+}
+
+pub unsafe fn enable_high_mem() {
+    let mut high = 0;
+    for range in MEM_REGIONS.iter().filter_map(|x| x.as_ref().and_then(|x|
+            if let StoredMemRegion::HIGH(range) = x { Some(range) } else {None})) {
+        if !try_add_mem_physical(range.clone()) {
+            panic!("High memory region {:?} still not in kernel window", range);
+        }
+        high += range.end - range.start;
+    }
+    let boot_mem = MEM_REGIONS.iter().filter_map(|x| x.as_ref().and_then(|x|
+            if let StoredMemRegion::BOOT(slice) = x { Some(slice.len()) } else { None }
+        )).fold(0, |acc, x| acc + x);
+    print!(Debug, "Added {} bytes of high memory to kernel heap. Have {} bytes still in boot mem", high, boot_mem);
+}
+
 /// Adds memory by physical address
 ///
 /// This is a more general version of `add_mem` and allows for adding memory that is not yet
