@@ -175,7 +175,7 @@ gdt64:
 
 .align 32
 phys_stack_bottom:
-    .fill 16384
+    .fill 2097152
 phys_stack_top:
 .align 4096
 phys_pml4:
