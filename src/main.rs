@@ -16,6 +16,7 @@
 #![feature(panic_implementation)]
 #![feature(panic_info_message)]
 #![feature(iterator_step_by)]
+#![feature(never_type)]
 #![no_std]
 #![no_main]
 #![feature(plugin)]
