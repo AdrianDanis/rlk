@@ -8,12 +8,15 @@ use alloc::boxed::Box;
 use cpu;
 use heap;
 use con;
+use core::ptr::Unique;
 
-struct KernelVSpace(AS);
+struct KernelVSpace {
+    root: Unique<AS>,
+}
 
 impl Default for KernelVSpace {
     fn default() -> Self {
-        KernelVSpace{0: AS::default()}
+        KernelVSpace{root: unsafe{Unique::new_unchecked(Box::into_raw(box AS::default()))}}
     }
 }
 
@@ -52,8 +55,8 @@ impl KernelVSpace {
             // as this is not the kernel image, no need for executable
             let mapping = PageMappingBuilder::new(gb, gb - (KERNEL_BASE - KERNEL_PHYS_BASE), PageSize::Huge(page1gb)).kernel().no_execute().write().finish();
             unsafe {
-                self.0.ensure_mapping_entry(mapping);
-                self.0.raw_map_page(mapping);
+                self.root.as_mut().ensure_mapping_entry(mapping);
+                self.root.as_mut().raw_map_page(mapping);
             }
         }
         // map in the kernel image
@@ -61,8 +64,8 @@ impl KernelVSpace {
             // unfortunately the data and bss is also here so we need this both executable and writable
             let mapping = PageMappingBuilder::new(gb, gb - (KERNEL_IMAGE_BASE - KERNEL_PHYS_BASE), PageSize::Huge(page1gb)).kernel().executable().write().finish();
             unsafe {
-                self.0.ensure_mapping_entry(mapping);
-                self.0.raw_map_page(mapping);
+                self.root.as_mut().ensure_mapping_entry(mapping);
+                self.root.as_mut().raw_map_page(mapping);
             }
         }
     }
@@ -74,7 +77,7 @@ pub unsafe fn make_kernel_address_space() {
     kernel_as.map_kernel_window();
     con::disable_physical_con();
     // enable address space
-    let kernel_as_paddr = KERNEL_WINDOW.vaddr_to_paddr(&kernel_as.0 as *const AS as usize).unwrap();
+    let kernel_as_paddr = KERNEL_WINDOW.vaddr_to_paddr(kernel_as.root.as_ptr() as usize).unwrap();
     // Load CR3, this will invalidate all our translation information so there is nothing else
     // we need to do
     cpu::load_cr3(kernel_as_paddr, KERNEL_PCID, false);
