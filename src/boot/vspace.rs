@@ -46,5 +46,3 @@ impl Init {
         Init
     }
 }
-
-pub static INIT_WINDOW: Init = Init::make();

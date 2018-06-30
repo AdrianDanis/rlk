@@ -3,14 +3,16 @@
 use vspace::*;
 use vspace::paging::*;
 use cpu::features::Page1GB;
-use state::{CPU_FEATURES, KERNEL_WINDOW};
+use state::CPU_FEATURES;
 use alloc::boxed::Box;
 use cpu;
 use heap;
 use con;
 use core::ptr::Unique;
+use boot::state::BootState;
+use state::STATE;
 
-struct KernelVSpace {
+pub struct KernelVSpace {
     root: Unique<AS>,
 }
 
@@ -47,7 +49,7 @@ unsafe impl Translation for KernelVSpace {
 unsafe impl VSpace for KernelVSpace {}
 
 impl KernelVSpace {
-    unsafe fn map_kernel_window(&mut self) {
+    unsafe fn map_kernel_window<'a, T: Translation + ?Sized>(&mut self, translation: &'a T) {
         // currently assume 1gb pages
         let page1gb: Page1GB = unsafe{CPU_FEATURES}.get_page1gb().expect("Require 1GB page support");
         // create the guaranteed kernel mappings
@@ -55,8 +57,8 @@ impl KernelVSpace {
             // as this is not the kernel image, no need for executable
             let mapping = PageMappingBuilder::new(gb, gb - (KERNEL_BASE - KERNEL_PHYS_BASE), PageSize::Huge(page1gb)).kernel().no_execute().write().finish();
             unsafe {
-                self.root.as_mut().ensure_mapping_entry(mapping);
-                self.root.as_mut().raw_map_page(mapping);
+                self.root.as_mut().ensure_mapping_entry(translation, mapping);
+                self.root.as_mut().raw_map_page(translation, mapping);
             }
         }
         // map in the kernel image
@@ -64,26 +66,25 @@ impl KernelVSpace {
             // unfortunately the data and bss is also here so we need this both executable and writable
             let mapping = PageMappingBuilder::new(gb, gb - (KERNEL_IMAGE_BASE - KERNEL_PHYS_BASE), PageSize::Huge(page1gb)).kernel().executable().write().finish();
             unsafe {
-                self.root.as_mut().ensure_mapping_entry(mapping);
-                self.root.as_mut().raw_map_page(mapping);
+                self.root.as_mut().ensure_mapping_entry(translation, mapping);
+                self.root.as_mut().raw_map_page(translation, mapping);
             }
         }
     }
 }
 
-pub unsafe fn make_kernel_address_space() {
+pub unsafe fn make_kernel_address_space<'a, B: BootState>(state: &'a B) {
     // create kernel address space
-    let kernel_as = Box::leak(box KernelVSpace::default());
-    kernel_as.map_kernel_window();
+    let mut kernel_as = KernelVSpace::default();
+    kernel_as.map_kernel_window(state.get_kernel_as().as_translation_ref());
     con::disable_physical_con();
     // enable address space
-    let kernel_as_paddr = KERNEL_WINDOW.vaddr_to_paddr(kernel_as.root.as_ptr() as usize).unwrap();
+    let kernel_as_paddr = state.get_kernel_as().vaddr_to_paddr(kernel_as.root.as_ptr() as usize).unwrap();
     // Load CR3, this will invalidate all our translation information so there is nothing else
     // we need to do
     cpu::load_cr3(kernel_as_paddr, KERNEL_PCID, false);
-    // update the KERNEL_WINDOW
-    KERNEL_WINDOW = kernel_as;
+    STATE.kernel_as = kernel_as;
     // tell the heap that we can use all the memory now?
-    heap::enable_high_mem();
+    heap::enable_high_mem(STATE.kernel_as.as_translation_ref());
 }
 

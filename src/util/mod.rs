@@ -84,3 +84,13 @@ pub mod units {
     pub const MB: usize = KB * 1024;
     pub const GB: usize = MB * 1024;
 }
+
+union Uninitialized<T> {
+    t: T,
+    u: (),
+}
+
+pub const unsafe fn uninitialized<T>() -> T {
+    Uninitialized{ u: () }.t
+}
+

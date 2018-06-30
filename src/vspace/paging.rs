@@ -1,7 +1,7 @@
 use x86::bits64::paging::*;
 use x86::shared::paging::VAddr;
 use cpu::features::{Page1GB, NXE, PGE};
-use state::{CPU_FEATURES, KERNEL_WINDOW};
+use state::CPU_FEATURES;
 use util::units::GB;
 use vspace::*;
 use cpu::MemoryType;
@@ -159,14 +159,14 @@ impl Default for PDPTWrap {
 }
 
 impl PDPTWrap {
-    fn make_entry(&self, access: Access) -> PML4Entry {
-        PML4Entry::new(PAddr::from_u64(unsafe{KERNEL_WINDOW}.vaddr_to_paddr(self as *const PDPTWrap as usize).unwrap() as u64), PML4Entry::from(access) | PML4_P)
+    fn make_entry<'a, T: Translation + ?Sized>(&self, translation: &'a T, access: Access) -> PML4Entry {
+        PML4Entry::new(PAddr::from_u64(translation.vaddr_to_paddr(self as *const PDPTWrap as usize).unwrap() as u64), PML4Entry::from(access) | PML4_P)
     }
-    unsafe fn from_entry(entry: PML4Entry) -> &'static mut PDPTWrap {
+    unsafe fn from_entry<'a, T: Translation + ?Sized>(entry: PML4Entry, translation: &'a T) -> &'static mut PDPTWrap {
         if !entry.is_present() {
             panic!("No PDPT entry in PML4");
         }
-        let vaddr = KERNEL_WINDOW.paddr_to_vaddr(entry.get_address().as_u64() as usize).unwrap();
+        let vaddr = translation.paddr_to_vaddr(entry.get_address().as_u64() as usize).unwrap();
         mem::transmute(vaddr as *mut PDPTWrap)
     }
 }
@@ -186,10 +186,10 @@ impl AS {
     /// # Panics
     ///
     /// If the desired virtual address is already marked as present then 
-    pub unsafe fn raw_map_page(&mut self, mapping: PageMapping) {
+    pub unsafe fn raw_map_page<'a, T: Translation + ?Sized>(&mut self, translation: &'a T, mapping: PageMapping) {
 
         let pml4ent = &self.0[pml4_index(VAddr::from_usize(mapping.vaddr))];
-        let pdpt = PDPTWrap::from_entry(*pml4ent);
+        let pdpt = PDPTWrap::from_entry(*pml4ent, translation);
         let pdptent = &mut pdpt.0[pdpt_index(VAddr::from_usize(mapping.vaddr))];
         if pdptent.is_present() {
             panic!("Mapping already present in PDPT");
@@ -210,11 +210,11 @@ impl AS {
     /// Will panic if the entry cannot be created due to a frame existing at a higher level.
     /// i.e. if trying to ensure an entry for a 4K frame but there is already a 2M frame
     /// covering the region, preventing the necessary page table from being created.
-    pub unsafe fn ensure_mapping_entry(&mut self, mapping: PageMapping) {
+    pub unsafe fn ensure_mapping_entry<'a, T: Translation + ?Sized>(&mut self, translation: &'a T, mapping: PageMapping) {
         let pml4ent = &mut self.0[pml4_index(VAddr::from_usize(mapping.vaddr))];
         if !pml4ent.is_present() {
             let pdpt = box PDPTWrap::default();
-            *pml4ent = pdpt.make_entry(Access::default_kernel_paging());
+            *pml4ent = pdpt.make_entry(translation, Access::default_kernel_paging());
             Box::into_raw(pdpt);
         }
         if let PageSize::Huge(page1gb) = mapping.size {

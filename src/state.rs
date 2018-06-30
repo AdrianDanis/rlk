@@ -3,12 +3,19 @@
 use boot;
 use vspace::VSpace;
 use cpu::Features;
+use vspace;
+use util;
 
-/// Kernel virtual address window definition
-///
-/// Starts as the low window on boot. This is mostly needed by early boot code and allocator
-/// setup.
-pub static mut KERNEL_WINDOW: &'static VSpace = &boot::vspace::INIT_WINDOW;
+/// Holder of mutable kernel state
+pub struct State {
+    pub kernel_as: vspace::KernelVSpace,
+}
+
+pub static mut STATE: State = unsafe {
+    State {
+        kernel_as: util::uninitialized(),
+    }
+};
 
 /// Available CPU features
 ///

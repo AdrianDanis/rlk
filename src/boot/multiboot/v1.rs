@@ -1,8 +1,8 @@
 use multiboot::*;
 use boot;
-use state::KERNEL_WINDOW;
 use heap;
 use vspace;
+use boot::state::BootState;
 
 use core::{mem, slice};
 
@@ -72,30 +72,30 @@ impl Header {
     }
 }
 
-fn paddr_to_slice<'a>(p: PAddr, sz: usize) -> Option<&'a [u8]> {
+fn paddr_to_slice<'a, 'b, B: BootState>(state: &'b B, p: PAddr, sz: usize) -> Option<&'a [u8]> {
     unsafe {
-        KERNEL_WINDOW.paddr_to_vaddr_range(p as usize..p as usize + sz)
+        state.get_kernel_as().paddr_to_vaddr_range(p as usize..p as usize + sz)
             .map(|x| slice::from_raw_parts(mem::transmute(x.start), sz))
     }
 }
 
-pub fn init(mb: usize) {
+pub fn init<'a, B: BootState>(state: &'a B, mb: usize) {
     // Process cmdline as we want to get this done as soon as possible for earlycon
-    let mb = unsafe{Multiboot::new(mb as PAddr, paddr_to_slice)}.unwrap();
+    let mb = unsafe{Multiboot::new(mb as PAddr, |p, sz| paddr_to_slice(state, p, sz))}.unwrap();
     let cmdline = mb.command_line();
     if let Some(x) = cmdline {
         boot::cmdline::process(unsafe{mem::transmute(x)});
     }
     // Process memory map and initialize allocators
     // First mark as reserved any common data
-    boot::mark_image_mem();
+    boot::mark_image_mem(state);
     // Now mark anything additional from multiboot specifically that we want to still have
     // *after* we have enabled the heap later on
     if let Some(x) = cmdline {
         // Can unwrap as we already know the commandline is valid as we originally retrieved it from
         // paddr_to_slice, which checked the KERNEL_WINDOW. We are recreating it, despite this being
         // undefined behaviour, as we need to give a mutable slice to add_mem_owned.
-        unsafe{heap::add_used_mem(vspace::declare_slice(KERNEL_WINDOW, x.as_ptr() as usize, x.len()).unwrap())}
+        unsafe{heap::add_used_mem(vspace::declare_slice(state.get_kernel_as(), x.as_ptr() as usize, x.len()).unwrap())}
     }
 
     // Add free memory
@@ -103,7 +103,7 @@ pub fn init(mb: usize) {
         print!(Info, "Parsing regions");
         unsafe {
             memiter.filter(|x| x.memory_type() == MemoryType::Available)
-                .for_each(|x| heap::add_mem_physical(x.base_address() as usize..x.base_address() as usize+x.length() as usize));
+                .for_each(|x| heap::add_mem_physical(state.get_kernel_as().as_translation_ref(), x.base_address() as usize..x.base_address() as usize+x.length() as usize));
         }
     } else {
         print!(Error, "Found no memory regions");

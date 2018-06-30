@@ -17,6 +17,7 @@
 #![feature(panic_info_message)]
 #![feature(iterator_step_by)]
 #![feature(never_type)]
+#![feature(untagged_unions)]
 #![no_std]
 #![no_main]
 #![feature(plugin)]
@@ -56,7 +57,7 @@ pub static mut ALLOCATOR: heap::AllocProxy = heap::AllocProxy::new();
 #[no_mangle]
 pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
     if arg1 as u32 == multiboot::SIGNATURE_EAX {
-        boot::multiboot::v1::init(arg2);
+        boot::multiboot::v1::init(unsafe{&boot::state::STATE}, arg2);
     } else {
         panic!("Unknown boot style");
     }
@@ -64,7 +65,7 @@ pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
         panic!("Failed to init cpu");
     }
     print!(Info, "Switching to full kernel address space");
-    unsafe {vspace::make_kernel_address_space()};
+    unsafe {vspace::make_kernel_address_space(&mut boot::state::STATE)};
     // TODO: switch to a new stack that is guarded and not in our boot memory
     // TODO: switch to non early cons
     print!(Info, "arg1 is {:x}", arg1);

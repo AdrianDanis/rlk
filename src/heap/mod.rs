@@ -5,11 +5,12 @@ mod buddy;
 use core::alloc::Layout;
 use alloc::alloc::GlobalAlloc;
 use core::ops::Range;
-use state::KERNEL_WINDOW;
 use ::ALLOCATOR;
 use util::{log2_usize, PrintRange};
 use core::cmp::max;
 use vspace::declare_slice;
+use boot::state::BootState;
+use vspace::Translation;
 
 pub struct AllocProxy {
     alloc_fn: unsafe fn(Layout) -> *mut u8,
@@ -114,8 +115,8 @@ pub fn add_mem_owned(mem: &'static mut [u8]) {
 ///
 /// # Panics
 ///
-/// Will panic if the memory provided is not deemed valid according to the current `KERNEL_WINDOW`
-pub unsafe fn add_mem(range: Range<usize>) {
+/// Will panic if the memory provided is not deemed valid according to the provided translation
+pub unsafe fn add_mem<'a, T: Translation + ?Sized>(translation: &'a T, range: Range<usize>) {
     for region in MEM_REGIONS.iter().filter_map(|x| x.as_ref().and_then(|x| match x { StoredMemRegion::USED(range) | StoredMemRegion::BOOT(range) => Some(range), _ => None })) {
         let start = region.as_ptr() as usize;
         let end = start + region.len();
@@ -124,20 +125,20 @@ pub unsafe fn add_mem(range: Range<usize>) {
         } else {
             // see if we need to add an initial region
             if range.start < start {
-                add_mem(range.start..start);
+                add_mem(translation, range.start..start);
             }
             // see if we need to add a final region
             if range.end > end {
-                add_mem(end..range.end);
+                add_mem(translation, end..range.end);
             }
             return;
         }
     }
     // Range not already used, grab it from the KERNEL_WINDOW just to be sure
-    if let Some(mem) = declare_slice(KERNEL_WINDOW, range.start, range.end - range.start) {
+    if let Some(mem) = declare_slice(translation, range.start, range.end - range.start) {
         add_mem_owned(mem);
     } else {
-        panic!("Invalid memory range {:?} according to current KERNEL_WINDOW", range);
+        panic!("Invalid memory range {:?} according to provided translation", range);
     }
 }
 
@@ -174,20 +175,20 @@ pub fn enable_heap() {
     }
 }
 
-unsafe fn try_add_mem_physical(range: Range<usize>) -> bool {
-    if let Some(vaddr) = KERNEL_WINDOW.paddr_to_vaddr_range(range.clone()) {
-        add_mem(vaddr);
+unsafe fn try_add_mem_physical<'a, T: Translation + ?Sized>(translation: &'a T, range: Range<usize>) -> bool {
+    if let Some(vaddr) = translation.paddr_to_vaddr_range(range.clone()) {
+        add_mem(translation, vaddr);
         true
     } else {
         false
     }
 }
 
-pub unsafe fn enable_high_mem() {
+pub unsafe fn enable_high_mem<'a, T: Translation + ?Sized>(translation: &'a T) {
     let mut high = 0;
     for range in MEM_REGIONS.iter().filter_map(|x| x.as_ref().and_then(|x|
             if let StoredMemRegion::HIGH(range) = x { Some(range) } else {None})) {
-        if !try_add_mem_physical(range.clone()) {
+        if !try_add_mem_physical(translation, range.clone()) {
             panic!("High memory region {:?} still not in kernel window", range);
         }
         high += range.end - range.start;
@@ -202,9 +203,9 @@ pub unsafe fn enable_high_mem() {
 ///
 /// This is a more general version of `add_mem` and allows for adding memory that is not yet
 /// available to describe virtually
-pub unsafe fn add_mem_physical(range: Range<usize>) {
-    if let Some(vaddr) = KERNEL_WINDOW.paddr_to_vaddr_range(range.clone()) {
-        add_mem(vaddr)
+pub unsafe fn add_mem_physical<'a, T: Translation + ?Sized>(translation: &'a T, range: Range<usize>) {
+    if let Some(vaddr) = translation.paddr_to_vaddr_range(range.clone()) {
+        add_mem(translation, vaddr)
     } else {
         if !add_mem_region(StoredMemRegion::HIGH(range.clone())) {
             print!(Info, "Had to throw away memory region {:?} as it is not in kernel window and ran out of EXTRA_MEM slots. Consider increasing MAX_EXTRA_MEM", range);
