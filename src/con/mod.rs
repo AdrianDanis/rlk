@@ -17,6 +17,7 @@
 
 use core::result::Result;
 use core::fmt;
+use core::mem;
 use util;
 
 mod vga;
@@ -47,12 +48,12 @@ pub trait Con {
 pub trait EarlyCon: Con {
     // TODO: should this be a general `Con` trait?
     fn shutdown(&mut self);
-    // EarlyCon's start in a kernel without any device mappings, this tells the con that virtual
-    // memory services are available and it should switch to them in preparation of early physical
-    // boot window going away
-    // This will only be called once
-    // TODO: what kind of error handling?
-    fn become_virtual(&mut self) -> Result<(),()>;
+    /// Inquire whether the `EarlyCon` can survive without memory mappings
+    ///
+    /// During boot the 1-1 physical mappings go away and are unavilable for a short period until
+    /// virtual memory is available. In this period if a con needs memory mappings it must return
+    /// `true` here so that it can be shutdown during this period.
+    fn is_physical(&self) -> bool;
 }
 
 struct EarlyConEntry {
@@ -106,7 +107,6 @@ impl State {
     }
 
     fn print_line(&mut self, verbosity: V, args: fmt::Arguments) -> fmt::Result {
-        // Currently only assume the early con
         match self.early {
             Some(ref mut con) => {
                 con.prepare(verbosity)?;
@@ -133,6 +133,13 @@ impl State {
             Ok(())
         }
     }
+    pub fn disable_physical(&mut self) {
+        if self.early.as_mut().map_or(false, |con| con.is_physical()) {
+            self.print(V::Error, format_args!("Disabling early memory mappings, shutting down early console"));
+            self.early.as_mut().map(|con| con.shutdown());
+            self.early = None;
+        }
+    }
 }
 
 unsafe fn get() -> &'static mut State {
@@ -151,6 +158,10 @@ pub fn print_fmt(verbosity: V, args: fmt::Arguments) {
     if let Err(err) = unsafe{get()}.print(verbosity, args) {
         panic!("Print failed with {}", err);
     }
+}
+
+pub fn disable_physical_con() {
+    unsafe{get().disable_physical()}
 }
 
 #[macro_export]

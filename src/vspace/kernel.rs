@@ -7,6 +7,7 @@ use state::{CPU_FEATURES, KERNEL_WINDOW};
 use alloc::boxed::Box;
 use cpu;
 use heap;
+use con;
 
 struct KernelVSpace(AS);
 
@@ -71,7 +72,7 @@ pub unsafe fn make_kernel_address_space() {
     // create kernel address space
     let kernel_as = Box::leak(box KernelVSpace::default());
     kernel_as.map_kernel_window();
-    // TODO: inform any early cons that we are switching
+    con::disable_physical_con();
     // enable address space
     let kernel_as_paddr = KERNEL_WINDOW.vaddr_to_paddr(&kernel_as.0 as *const AS as usize).unwrap();
     // Load CR3, this will invalidate all our translation information so there is nothing else

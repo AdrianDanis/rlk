@@ -54,10 +54,10 @@ impl Con for ConSerial {
 
 impl EarlyCon for ConSerial {
     fn shutdown(&mut self) -> () {
-        unimplemented!()
+        // nothing to do?
     }
-    fn become_virtual(&mut self) -> Result<(), ()> {
-        unimplemented!()
+    fn is_physical(&self) -> bool {
+        false
     }
 }
 

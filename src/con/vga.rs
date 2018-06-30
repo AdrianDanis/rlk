@@ -156,9 +156,10 @@ impl Con for VGAText {
 
 impl EarlyCon for VGAText {
     fn shutdown(&mut self) -> () {
+        // nothing to do?
     }
-    fn become_virtual(&mut self) -> Result<(), ()> {
-        unimplemented!("not implemented")
+    fn is_physical(&self) -> bool {
+        true
     }
 }
 
