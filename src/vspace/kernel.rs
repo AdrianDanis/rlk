@@ -82,6 +82,5 @@ pub unsafe fn make_kernel_address_space() {
     KERNEL_WINDOW = kernel_as;
     // tell the heap that we can use all the memory now?
     heap::enable_high_mem();
-    unimplemented!()
 }
 
