@@ -54,6 +54,16 @@ pub mod cpu;
 #[global_allocator]
 pub static mut ALLOCATOR: heap::AllocProxy = heap::AllocProxy::new();
 
+fn boot_continued(_no_arg: ()) -> ! {
+    // TODO: switch to non early cons
+    print!(Panic, "Panic");
+    print!(Error, "Error");
+    print!(Info, "Info");
+    print!(Debug, "Debug");
+    print!(Trace, "Trace");
+    panic!("End of boot");
+}
+
 #[no_mangle]
 pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
     if arg1 as u32 == multiboot::SIGNATURE_EAX {
@@ -66,15 +76,11 @@ pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
     }
     print!(Info, "Switching to full kernel address space");
     unsafe {vspace::make_kernel_address_space(&mut boot::state::STATE)};
-    // TODO: switch to a new stack that is guarded and not in our boot memory
-    // TODO: switch to non early cons
-    print!(Info, "arg1 is {:x}", arg1);
-    print!(Panic, "Panic");
-    print!(Error, "Error");
-    print!(Info, "Info");
-    print!(Debug, "Debug");
-    print!(Trace, "Trace");
-    panic!("End of boot");
+    unsafe {
+        print!(Info, "Switching to proper kernel stack");
+        let stack = vspace::Stack::new_kernel(&mut state::STATE.kernel_as);
+        stack.run_on_stack((), boot_continued);
+    }
 }
 
 #[lang = "oom"]

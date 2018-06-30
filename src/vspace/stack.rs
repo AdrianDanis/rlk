@@ -16,7 +16,7 @@ impl Stack {
     /// Caller is responsible for making sure that the stack being executed exists in the
     /// currently activated address space and that nothing else is using this stack. We
     /// cannot consume the stack as the stack has meaning beyond running on it.
-    pub unsafe fn run_on_stack<A, F: FnOnce(A) -> !>(&mut self) -> ! {
+    pub unsafe fn run_on_stack<A, F: FnOnce(A) -> !>(&self, arg: A, f: F) -> ! {
         unimplemented!()
     }
     /// Creates new stack with default options for kernel
