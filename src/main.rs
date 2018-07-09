@@ -78,8 +78,8 @@ pub extern "C" fn boot_system(arg1: usize, arg2: usize) -> ! {
     unsafe {vspace::make_kernel_address_space(&mut boot::state::STATE)};
     unsafe {
         print!(Info, "Switching to proper kernel stack");
-        let stack = vspace::Stack::new_kernel(&mut state::STATE.kernel_as);
-        stack.run_on_stack((), boot_continued);
+        let mut stack = vspace::Stack::new_kernel(&mut state::STATE.kernel_as).unwrap();
+        stack.run_on_stack((), boot_continued)
     }
 }
 

@@ -18,6 +18,8 @@ pub unsafe trait Allocation {
     ///
     /// Like alloc, this is allowed to fail if align and base are not suitable multiples
     ///
+    /// The returned pointer (if None was not returned) is guaranteed to be just `base` casted
+    ///
     /// # Safety
     ///
     /// The function is unsafe as it is assumed that you received the range from reserve
