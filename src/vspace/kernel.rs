@@ -42,8 +42,13 @@ unsafe impl Allocation for KernelVSpace {
     }
     fn fill(&mut self, base: usize, size: usize) -> Option<*mut u8> {
         // for now we will only support filling 2Mb pages so we don't have to check structures
-        if base % (2 * MB) != 0 || size % (2 * MB) != 0 {
+        if base % PAGE_SIZE_2M != 0 || size % PAGE_SIZE_2M != 0 {
             return None;
+        }
+        for mb in (base..base+size).step_by(PAGE_SIZE_2M) {
+            // allocate a page and turn it into a raw
+            
+//            let mapping = PageMappingBuilder(mb, 
         }
         unimplemented!()
     }

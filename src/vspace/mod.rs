@@ -8,7 +8,7 @@ mod stack;
 
 pub use self::paging::AS;
 pub use self::translation::{AsTranslation, Translation};
-pub use self::allocation::Allocation;
+pub use self::allocation::*;
 pub use self::kernel::make_kernel_address_space;
 pub use self::stack::Stack;
 pub use self::kernel::KernelVSpace;

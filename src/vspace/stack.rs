@@ -1,7 +1,6 @@
 //! Routines for manipulating stacks
 
 use vspace::*;
-use util::units::MB;
 
 pub struct Stack {
     base: usize,
@@ -27,8 +26,8 @@ impl Stack {
     /// Stacks are not free'd when they are dropped. For this reason the function is unsafe
     /// as it is the callers responsibility to ensure that memory is cleaned up.
     pub unsafe fn new_kernel<V: VSpace>(vspace: &mut V) -> Option<Stack> {
-        vspace.reserve(MB * 4, MB * 2)
-            .and_then(|base| vspace.fill(base + MB * 2, MB * 2))
-            .map(|base| Stack {base: base as usize, guard_size: MB * 2, top_offset: MB * 4})
+        vspace.reserve(2 * PAGE_SIZE_2M, PAGE_SIZE_2M)
+            .and_then(|base| vspace.fill(base + PAGE_SIZE_2M, PAGE_SIZE_2M))
+            .map(|base| Stack {base: base as usize, guard_size: PAGE_SIZE_2M, top_offset: 2 * PAGE_SIZE_2M})
     }
 }
