@@ -11,14 +11,16 @@ use con;
 use core::ptr::Unique;
 use boot::state::BootState;
 use state::STATE;
+use util::units::MB;
 
 pub struct KernelVSpace {
     root: Unique<AS>,
+    dynamic_free: Range<usize>,
 }
 
 impl Default for KernelVSpace {
     fn default() -> Self {
-        KernelVSpace{root: unsafe{Unique::new_unchecked(Box::into_raw(box AS::default()))}}
+        KernelVSpace{root: unsafe{Unique::new_unchecked(Box::into_raw(box AS::default()))}, dynamic_free: KERNEL_DYNAMIC_RANGE}
     }
 }
 
@@ -27,9 +29,22 @@ unsafe impl Allocation for KernelVSpace {
         unimplemented!()
     }
     fn reserve(&mut self, size: usize, align: usize) -> Option<usize> {
-        unimplemented!()
+        // Currently no reserve restrictions as we restrict in fill
+        if let Some(base) = self.dynamic_free.start.checked_add((self.dynamic_free.start as *mut u8).align_offset(align)) {
+            if let Some(top) = base.checked_add(size) {
+                if top < self.dynamic_free.end {
+                    self.dynamic_free.start = top;
+                    return Some(base);
+                }
+            }
+        }
+        None
     }
     fn fill(&mut self, base: usize, size: usize) -> Option<*mut u8> {
+        // for now we will only support filling 2Mb pages so we don't have to check structures
+        if base % (2 * MB) != 0 || size % (2 * MB) != 0 {
+            return None;
+        }
         unimplemented!()
     }
 }
