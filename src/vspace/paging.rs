@@ -7,6 +7,7 @@ use vspace::*;
 use cpu::MemoryType;
 use alloc::boxed::Box;
 use core::mem;
+use core::marker::PhantomData;
 
 pub enum Rights {
     Read,
@@ -72,50 +73,59 @@ impl Access {
     }
 }
 
-#[derive(Debug, Clone, Copy)]
-pub struct PageMapping {
+#[derive(Debug, Copy)]
+pub struct PageMapping<S: PageLevel> {
     vaddr: usize,
     paddr: usize,
     pge: Option<PGE>,
     mt: MemoryType,
-    size: PageSize,
     access: Access,
+    marker: PhantomData<S>,
 }
 
-impl From<PageMapping> for PDPTEntry {
-    fn from(mapping: PageMapping) -> PDPTEntry {
-        if let PageSize::Huge(_) = mapping.size {
-            let mut entry = PDPTEntry::new(PAddr::from_u64(mapping.paddr as u64), PDPTEntry::from(mapping.access) | PDPTEntry::from(mapping.mt) | PDPT_PS);
-            if mapping.pge.is_some() {
-                entry.insert(PDPT_G);
-            }
-            entry
-        } else {
-            panic!("Cannot create PDPT entry from non 1gb page mapping");
+// Have to manually implement clone for some reason.... compiler bug?
+impl<S: PageLevel> Clone for PageMapping<S> {
+    fn clone(&self) -> Self {
+        PageMapping {
+            vaddr: self.vaddr,
+            paddr: self.paddr,
+            pge: self.pge,
+            mt: self.mt,
+            access: self.access,
+            marker: self.marker
         }
     }
 }
 
-pub struct PageMappingBuilder {
-    internal: PageMapping,
+impl From<PageMapping<Page1G>> for PDPTEntry {
+    fn from(mapping: PageMapping<Page1G>) -> PDPTEntry {
+        let mut entry = PDPTEntry::new(PAddr::from_u64(mapping.paddr as u64), PDPTEntry::from(mapping.access) | PDPTEntry::from(mapping.mt) | PDPT_PS);
+        if mapping.pge.is_some() {
+            entry.insert(PDPT_G);
+        }
+        entry
+    }
 }
 
-impl PageMappingBuilder {
-    pub fn new(vaddr: usize, paddr: usize, size: PageSize) -> Self {
-        PageMappingBuilder {
-            internal: PageMapping {
-                vaddr: vaddr,
-                paddr: paddr,
-                access: Access{
-                    write: false,
-                    user: false,
-                    nxe: None,
-                },
-                pge: None,
-                mt: MemoryType::WB,
-                size: size,
-            }
-        }
+pub struct PageMappingBuilder<S: PageLevel> {
+    internal: PageMapping<S>,
+}
+
+impl<S: PageLevel> PageMappingBuilder<S> {
+    pub fn new_page<'a, T: Translation + ?Sized>(page: Page<S>, translation: &'a T) -> Option<Self> {
+        translation.vaddr_to_paddr_range(page.range())
+            .map(|paddr_range|
+                PageMappingBuilder {
+                    internal: PageMapping {
+                        vaddr: page.range().start,
+                        paddr: paddr_range.start,
+                        access: Access {write: false, user: false, nxe: None},
+                        pge: None,
+                        mt: MemoryType::WB,
+                        marker: PhantomData,
+                    },
+                }
+            )
     }
     pub fn user(mut self) -> Self {
         self.internal.access.user = true;
@@ -143,8 +153,8 @@ impl PageMappingBuilder {
         self.internal.access.nxe = None;
         self
     }
-    pub fn finish(&self) -> PageMapping {
-        self.internal
+    pub fn finish(&self) -> PageMapping<S> {
+        self.internal.clone()
     }
 }
 
@@ -175,7 +185,8 @@ impl PDPTWrap {
 pub struct AS(PML4);
 assert_eq_size!(as_page_size; AS, [u8; 4096]);
 
-impl AS {
+// TODO: generalize mapping ops over all the levels
+pub unsafe trait ASMappingOps<S: PageLevel> {
     /// Maps a page without performing consistency updates
     ///
     /// This function assumes you will perform any TLB + structures cache updates on
@@ -186,20 +197,7 @@ impl AS {
     /// # Panics
     ///
     /// If the desired virtual address is already marked as present then 
-    pub unsafe fn raw_map_page<'a, T: Translation + ?Sized>(&mut self, translation: &'a T, mapping: PageMapping) {
-
-        let pml4ent = &self.0[pml4_index(VAddr::from_usize(mapping.vaddr))];
-        let pdpt = PDPTWrap::from_entry(*pml4ent, translation);
-        let pdptent = &mut pdpt.0[pdpt_index(VAddr::from_usize(mapping.vaddr))];
-        if pdptent.is_present() {
-            panic!("Mapping already present in PDPT");
-        }
-        if let PageSize::Huge(page1gb) = mapping.size {
-            *pdptent = PDPTEntry::from(mapping) | PDPT_P;
-            return;
-        }
-        unimplemented!()
-    }
+    unsafe fn raw_map_page<'a, T: Translation + ?Sized>(&mut self, translation: &'a T, mapping: PageMapping<S>);
     /// Ensure paging structures exist to support mapping
     ///
     /// This allocates structures from the heap and so is only intended to be used for
@@ -210,18 +208,27 @@ impl AS {
     /// Will panic if the entry cannot be created due to a frame existing at a higher level.
     /// i.e. if trying to ensure an entry for a 4K frame but there is already a 2M frame
     /// covering the region, preventing the necessary page table from being created.
-    pub unsafe fn ensure_mapping_entry<'a, T: Translation + ?Sized>(&mut self, translation: &'a T, mapping: PageMapping) {
+    unsafe fn ensure_mapping_entry<'a, T: Translation + ?Sized>(&mut self, translation: &'a T, mapping: PageMapping<S>);
+}
+
+unsafe impl ASMappingOps<Page1G> for AS {
+    unsafe fn raw_map_page<'a, T: Translation + ?Sized>(&mut self, translation: &'a T, mapping: PageMapping<Page1G>) {
+
+        let pml4ent = &self.0[pml4_index(VAddr::from_usize(mapping.vaddr))];
+        let pdpt = PDPTWrap::from_entry(*pml4ent, translation);
+        let pdptent = &mut pdpt.0[pdpt_index(VAddr::from_usize(mapping.vaddr))];
+        if pdptent.is_present() {
+            panic!("Mapping already present in PDPT");
+        }
+        *pdptent = PDPTEntry::from(mapping) | PDPT_P;
+    }
+    unsafe fn ensure_mapping_entry<'a, T: Translation + ?Sized>(&mut self, translation: &'a T, mapping: PageMapping<Page1G>) {
         let pml4ent = &mut self.0[pml4_index(VAddr::from_usize(mapping.vaddr))];
         if !pml4ent.is_present() {
             let pdpt = box PDPTWrap::default();
             *pml4ent = pdpt.make_entry(translation, Access::default_kernel_paging());
             Box::into_raw(pdpt);
         }
-        if let PageSize::Huge(page1gb) = mapping.size {
-            // all done
-            return;
-        }
-        unimplemented!()
     }
 }
 

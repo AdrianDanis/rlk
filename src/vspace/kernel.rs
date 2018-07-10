@@ -74,19 +74,21 @@ impl KernelVSpace {
         let page1gb: Page1GB = unsafe{CPU_FEATURES}.get_page1gb().expect("Require 1GB page support");
         // create the guaranteed kernel mappings
         for gb in KERNEL_BASE_DEFAULT_RANGE.step_by(GB) {
+            let page = Page::new_unchecked(gb, page1gb);
             // as this is not the kernel image, no need for executable
-            let mapping = PageMappingBuilder::new(gb, gb - (KERNEL_BASE - KERNEL_PHYS_BASE), PageSize::Huge(page1gb)).kernel().no_execute().write().finish();
+            let mapping = PageMappingBuilder::new_page(page, translation).unwrap().kernel().no_execute().write().finish();
             unsafe {
-                self.root.as_mut().ensure_mapping_entry(translation, mapping);
+                self.root.as_mut().ensure_mapping_entry(translation, mapping.clone());
                 self.root.as_mut().raw_map_page(translation, mapping);
             }
         }
         // map in the kernel image
         for gb in KERNEL_IMAGE_RANGE.step_by(GB) {
             // unfortunately the data and bss is also here so we need this both executable and writable
-            let mapping = PageMappingBuilder::new(gb, gb - (KERNEL_IMAGE_BASE - KERNEL_PHYS_BASE), PageSize::Huge(page1gb)).kernel().executable().write().finish();
+            let page = Page::new_unchecked(gb, page1gb);
+            let mapping = PageMappingBuilder::new_page(page, translation).unwrap().kernel().executable().write().finish();
             unsafe {
-                self.root.as_mut().ensure_mapping_entry(translation, mapping);
+                self.root.as_mut().ensure_mapping_entry(translation, mapping.clone());
                 self.root.as_mut().raw_map_page(translation, mapping);
             }
         }
