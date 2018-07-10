@@ -1,10 +1,3 @@
-use util::units::{KB, MB, GB};
-use core::mem;
-
-pub const PAGE_SIZE_4K: usize = 4 * KB;
-pub const PAGE_SIZE_2M: usize = 2 * MB;
-pub const PAGE_SIZE_1G: usize = GB;
-
 /// Trait that defines allocation of a virtual address space
 pub unsafe trait Allocation {
     /// Allocate a portion of the virtual address space
@@ -35,39 +28,4 @@ pub unsafe trait Allocation {
     ///
     /// May panic if given a region that is not from reserve
     fn fill(&mut self, base: usize, size: usize) -> Option<*mut u8>;
-}
-
-/// Base trait for mappable pages
-///
-/// This trait is unsafe as implementing it declares that this can be treated as page to
-/// mapping functions which could violate safety if incorrectly implemented
-unsafe trait Page {
-    fn base(&self) -> usize;
-    fn size(&self) -> PageSize;
-}
-
-#[repr(C, align(4096))]
-struct Page4K {
-    inner: [u8; PAGE_SIZE_4K],
-}
-
-impl Page for Page4K {
-    fn base(&self) -> usize {
-        se
-
-impl Default for Page4K {
-    fn default() -> Self {
-        Self { inner: unsafe{mem::uninitialized()} }
-    }
-}
-
-#[repr(C, align(2097152))]
-struct Page2M {
-    inner: [u8; PAGE_SIZE_2M],
-}
-
-impl Default for Page2M {
-    fn default() -> Self {
-        Self { inner: unsafe{mem::uninitialized()} }
-    }
 }

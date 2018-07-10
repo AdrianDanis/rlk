@@ -5,6 +5,7 @@ mod translation;
 mod allocation;
 mod kernel;
 mod stack;
+mod page;
 
 pub use self::paging::AS;
 pub use self::translation::{AsTranslation, Translation};
@@ -12,6 +13,7 @@ pub use self::allocation::*;
 pub use self::kernel::make_kernel_address_space;
 pub use self::stack::Stack;
 pub use self::kernel::KernelVSpace;
+pub use self::page::*;
 
 use util::units::{MB, GB};
 use core::ops::Range;
